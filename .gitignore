@@ -1,0 +1,18 @@
+# 应用打包产物
+AppOpt-v8.zip
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 编辑器配置
+.vscode/
+.idea/
+
+# 临时文件
+*.tmp
+*.log
+*.bak
+
+# Windows 系统文件
+desktop.ini

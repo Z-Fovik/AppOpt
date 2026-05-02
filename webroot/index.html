@@ -1,0 +1,4075 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AppOpt 自动线程优化 - Z-Fovik-RT</title>
+    <style>
+        /* ================= 核心 CSS 变量 (白天模式) ================= */
+        :root {
+            --P: #4f46e5;
+            --PD: #4338ca;
+            --S: #0d9488;
+            --bg: #f8fafc;
+            --sf: #ffffff;
+            --sf2: #f1f5f9;
+            --sf3: #e2e8f0;
+            --fg: #0f172a;
+            --fg2: #334155;
+            --dim: #64748b;
+            --ok: #10b981;
+            --warn: #f59e0b;
+            --err: #ef4444;
+            --r: 16px;
+            --rs: 10px;
+            --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.04);
+            --border-glass: rgba(0, 0, 0, 0.05);
+            --bg-glass: rgba(255, 255, 255, 0.85);
+        }
+
+        /* ================= 黑夜模式自动适配 ================= */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --P: #6366f1;
+                --PD: #4f46e5;
+                --S: #14b8a6;
+                --bg: #0f172a;
+                --sf: #1e293b;
+                --sf2: #334155;
+                --sf3: #475569;
+                --fg: #f8fafc;
+                --fg2: #cbd5e1;
+                --dim: #94a3b8;
+                --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.3);
+                --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
+                --border-glass: rgba(255, 255, 255, 0.05);
+                --bg-glass: rgba(30, 41, 59, 0.85);
+            }
+
+            .tabs {
+                background: rgba(0, 0, 0, 0.2) !important;
+            }
+
+            .rcard-bd,
+            .hlp,
+            .adetail {
+                background: var(--sf2) !important;
+            }
+
+            textarea.ced {
+                background: var(--sf) !important;
+            }
+
+            .opt-card:active,
+            .bak-item:active {
+                background: var(--sf3) !important;
+            }
+
+            #dbgbox {
+                background: #450a0a !important;
+                border-color: #7f1d1d !important;
+                color: #fca5a5 !important;
+            }
+
+            .tag.tc {
+                background: rgba(5, 150, 105, 0.2) !important;
+                color: #34d399 !important;
+            }
+
+            .tag.t-game {
+                background: rgba(245, 158, 11, 0.15) !important;
+                color: #fbbf24 !important;
+            }
+
+            .tag.t-app {
+                background: rgba(99, 102, 241, 0.15) !important;
+                color: #818cf8 !important;
+            }
+
+            .tag.t-sys {
+                background: rgba(148, 163, 184, 0.15) !important;
+                color: #94a3b8 !important;
+            }
+
+            .modal {
+                box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.4) !important;
+            }
+
+            .custom-sel-options {
+                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4) !important;
+            }
+
+            .custom-sel-options.drop-up {
+                box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.4) !important;
+            }
+
+            input {
+                background: var(--sf2) !important;
+                color: var(--fg) !important;
+                border-color: var(--sf3) !important;
+            }
+
+            .modal input,
+            .modal select {
+                background: #0f172a !important;
+                color: #ffffff !important;
+                border: 1px solid var(--P) !important;
+                font-size: 15px !important;
+                -webkit-text-fill-color: #ffffff !important;
+            }
+
+            .custom-sel-trigger:active {
+                background: var(--sf3) !important;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, sans-serif;
+            font-size: 14px;
+            overflow-x: hidden;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--dim);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .hdr {
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 100;
+            padding: 16px 16px 0;
+            position: sticky;
+            top: 0;
+            box-shadow: var(--shadow-md);
+            border-bottom: 1px solid var(--border-glass);
+            transition: background 0.3s;
+        }
+
+        .hdr-top {
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+            display: flex;
+        }
+
+        .hdr-top h1 {
+            flex: 1;
+            font-size: 18px;
+            font-weight: 800;
+            margin: 0;
+            background: linear-gradient(to right, #4f46e5, #9333ea);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .dot {
+            background: var(--dim);
+            border-radius: 50%;
+            flex-shrink: 0;
+            width: 10px;
+            height: 10px;
+            transition: all .3s;
+        }
+
+        .dot.ok {
+            background: var(--ok);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+        }
+
+        .dot.err {
+            background: var(--err);
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+        }
+
+        .tabs {
+            display: flex;
+            background: rgba(0, 0, 0, 0.04);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+        }
+
+        .tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab {
+            text-align: center;
+            color: var(--dim);
+            cursor: pointer;
+            user-select: none;
+            flex: 1;
+            padding: 10px 2px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all .2s;
+            white-space: nowrap;
+        }
+
+        .tab.active {
+            color: var(--P);
+            background: var(--sf);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .tbdg {
+            background: var(--P);
+            color: #fff;
+            border-radius: 10px;
+            justify-content: center;
+            align-items: center;
+            min-width: 18px;
+            margin-left: 4px;
+            padding: 2px 6px;
+            font-size: 10px;
+            display: inline-flex;
+            font-weight: bold;
+        }
+
+        .page {
+            padding: 16px 16px 120px;
+            display: none;
+            animation: fadeIn .25s ease-out;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .srch {
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .srch input {
+            background: var(--sf);
+            border: 1px solid var(--sf3);
+            border-radius: var(--rs);
+            width: 100%;
+            color: var(--fg);
+            outline: none;
+            padding: 12px 12px 12px 38px;
+            font-size: 14px;
+            transition: all .2s;
+        }
+
+        .srch input:focus {
+            border-color: var(--P);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+        }
+
+        .srch-ic {
+            color: var(--dim);
+            pointer-events: none;
+            position: absolute;
+            top: 50%;
+            left: 14px;
+            transform: translateY(-50%);
+            font-size: 15px;
+        }
+
+        .chips-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+            width: 100%;
+            align-items: stretch;
+        }
+
+        .chips-row .chip,
+        .chips-row .btn {
+            flex: 1 1 auto;
+            min-width: 75px;
+            padding: 8px 6px;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border-radius: 8px;
+            border: 1px solid var(--sf3);
+            background: var(--sf);
+            color: var(--dim);
+            transition: all .15s;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .chips-row .chip.active {
+            border-color: var(--P);
+            color: var(--P);
+            background: rgba(79, 70, 229, 0.08);
+            box-shadow: 0 2px 4px rgba(79, 70, 229, 0.1);
+        }
+
+        .chips-row .chip:active,
+        .chips-row .btn:active {
+            transform: scale(0.95);
+            opacity: 0.9;
+        }
+
+        .btn {
+            border: none;
+            font-weight: 600;
+            transition: all .15s;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            border-radius: var(--rs);
+            cursor: pointer;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .bp {
+            background: linear-gradient(135deg, var(--P), var(--PD));
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+        }
+
+        .bs {
+            background: var(--sf);
+            color: var(--fg2);
+            border: 1px solid var(--sf3);
+        }
+
+        .bok {
+            color: #fff;
+            background: linear-gradient(135deg, var(--ok), #059669);
+        }
+
+        .berr {
+            color: #fff;
+            background: linear-gradient(135deg, var(--err), #dc2626);
+        }
+
+        .bwarn {
+            color: #fff;
+            background: linear-gradient(135deg, var(--warn), #d97706);
+        }
+
+        .bsm {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: var(--rs);
+        }
+
+        .bxs {
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 11px;
+        }
+
+        .alist {
+            flex-direction: column;
+            gap: 10px;
+            display: flex;
+        }
+
+        .aitem {
+            background: var(--sf);
+            border-radius: var(--r);
+            cursor: pointer;
+            border: 1px solid var(--sf3);
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            padding: 14px;
+            transition: all .2s;
+            display: flex;
+        }
+
+        .aitem.sel {
+            border-color: var(--P);
+            background: rgba(79, 70, 229, 0.04);
+        }
+
+        .achk {
+            border: 2px solid var(--dim);
+            background: var(--sf);
+            border-radius: 6px;
+            flex-shrink: 0;
+            justify-content: center;
+            align-items: center;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            transition: all 0.2s;
+        }
+
+        .aitem.sel .achk,
+        .rcard.sel .achk {
+            background: var(--P);
+            border-color: var(--P);
+        }
+
+        .achkm {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            display: none;
+        }
+
+        .aitem.sel .achkm,
+        .rcard.sel .achkm {
+            display: block;
+        }
+
+        .aico {
+            background: var(--sf2);
+            border-radius: 10px;
+            flex-shrink: 0;
+            justify-content: center;
+            align-items: center;
+            width: 42px;
+            height: 42px;
+            font-size: 18px;
+            display: flex;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .ainf {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .aname {
+            color: var(--fg);
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            font-size: 15px;
+            font-weight: 700;
+            overflow: hidden;
+        }
+
+        .apkg {
+            color: var(--dim);
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            margin-top: 2px;
+            font-size: 11px;
+            overflow: hidden;
+            font-family: monospace;
+        }
+
+        .atags {
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+            display: flex;
+        }
+
+        .tag {
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: 800;
+            display: inline-block;
+        }
+
+        .tc {
+            color: #047857;
+            background: rgba(5, 150, 105, 0.1);
+        }
+
+        .tsy {
+            color: #b45309;
+            background: rgba(217, 119, 6, 0.1);
+        }
+
+        .ta {
+            color: #1d4ed8;
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .tag.t-game {
+            background: rgba(245, 158, 11, 0.1);
+            color: #d97706;
+        }
+
+        .tag.t-app {
+            background: rgba(79, 70, 229, 0.1);
+            color: var(--P);
+        }
+
+        .tag.t-sys {
+            background: rgba(148, 163, 184, 0.1);
+            color: #64748b;
+        }
+
+        .rcard {
+            background: var(--sf);
+            border-radius: var(--r);
+            margin-bottom: 10px;
+            overflow: hidden;
+            border: 1px solid var(--sf3);
+            transition: all .2s;
+            cursor: pointer;
+        }
+
+        .rcard.sel {
+            border-color: var(--P);
+            background: rgba(79, 70, 229, 0.03);
+        }
+
+        .rcard-hd {
+            align-items: center;
+            gap: 8px;
+            padding: 14px;
+            display: flex;
+        }
+
+        .rpname {
+            color: var(--fg);
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            font-size: 15px;
+            font-weight: 700;
+            overflow: hidden;
+        }
+
+        .rbdg {
+            color: var(--fg2);
+            background: var(--sf2);
+            border-radius: 12px;
+            flex-shrink: 0;
+            padding: 3px 10px;
+            font-size: 11px;
+            font-weight: 700;
+            border: 1px solid var(--sf3);
+        }
+
+        .rcard-bd {
+            border-top: 1px solid var(--sf3);
+            padding: 6px 14px 14px;
+            display: none;
+            background: var(--sf2);
+        }
+
+        .rcard.open .rcard-bd {
+            display: block;
+            animation: fadeIn .2s;
+        }
+
+        .rline {
+            border-bottom: 1px solid var(--sf3);
+            align-items: flex-start;
+            gap: 8px;
+            padding: 8px 0;
+            display: flex;
+        }
+
+        .rline:last-of-type {
+            border-bottom: none;
+        }
+
+        .rltxt {
+            color: var(--fg2);
+            word-break: break-all;
+            flex: 1;
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .rcore {
+            background: rgba(13, 148, 136, 0.1);
+            color: var(--S);
+            white-space: nowrap;
+            border-radius: 6px;
+            flex-shrink: 0;
+            padding: 2px 8px;
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .card {
+            background: var(--sf);
+            border-radius: var(--r);
+            margin-bottom: 12px;
+            padding: 16px;
+            border: 1px solid var(--sf3);
+        }
+
+        .card-title {
+            color: var(--dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 14px;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .irow {
+            border-bottom: 1px solid var(--sf3);
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            font-size: 14px;
+            display: flex;
+        }
+
+        .irow:last-child {
+            border-bottom: none;
+        }
+
+        .ilabel {
+            color: var(--fg2);
+            font-weight: 600;
+        }
+
+        .ival {
+            color: var(--fg);
+            text-align: right;
+            word-break: break-all;
+            max-width: 65%;
+            font-weight: 700;
+        }
+
+        .ival.ok {
+            color: var(--ok);
+        }
+
+        .ival.err {
+            color: var(--err);
+        }
+
+        .ival.warn {
+            color: var(--warn);
+        }
+
+        textarea.ced {
+            background: var(--sf);
+            border: 1px solid var(--sf3);
+            border-radius: var(--rs);
+            width: 100%;
+            color: var(--fg);
+            resize: vertical;
+            outline: none;
+            min-height: 50vh;
+            padding: 14px;
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            transition: all .2s;
+        }
+
+        textarea.ced:focus {
+            border-color: var(--P);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+        }
+
+        .esch {
+            background: var(--sf);
+            border: 1px solid var(--sf3);
+            border-radius: var(--rs);
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 12px;
+            padding: 6px 10px;
+            display: flex;
+        }
+
+        .esch input {
+            color: var(--fg);
+            background: transparent;
+            border: none;
+            outline: none;
+            flex: 1;
+            min-width: 0;
+            padding: 4px 2px;
+            font-size: 13px;
+        }
+
+        .esch .btn {
+            flex-shrink: 0;
+        }
+
+        .esch-info {
+            color: var(--dim);
+            white-space: nowrap;
+            font-size: 12px;
+        }
+
+        .mov {
+            z-index: 200;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(4px);
+            justify-content: center;
+            align-items: flex-end;
+            display: none;
+            position: fixed;
+            inset: 0;
+        }
+
+        .mov.open {
+            display: flex;
+            animation: fadeInBg .2s;
+        }
+
+        @keyframes fadeInBg {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .modal {
+            background: var(--sf);
+            border-radius: 24px 24px 0 0;
+            width: 100%;
+            max-width: 520px;
+            max-height: 90vh;
+            padding: 24px 20px 40px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .mtitle {
+            color: var(--fg);
+            margin-bottom: 6px;
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .msub {
+            color: var(--dim);
+            margin-bottom: 20px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .fld {
+            margin-bottom: 16px;
+        }
+
+        .fld label {
+            color: var(--fg2);
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            display: block;
+        }
+
+        .fld input {
+            background: var(--sf2);
+            border: 1px solid var(--sf3);
+            border-radius: var(--rs);
+            width: 100%;
+            color: var(--fg);
+            outline: none;
+            padding: 12px;
+            font-size: 14px;
+            transition: all .2s;
+        }
+
+        .fld input:focus {
+            border-color: var(--P);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .mbtns {
+            gap: 12px;
+            margin-top: 24px;
+            display: flex;
+        }
+
+        .mbtns .btn {
+            flex: 1;
+            padding: 14px;
+            font-size: 14px;
+            border-radius: var(--rs);
+        }
+
+        .ttog {
+            background: var(--sf2);
+            border-radius: 12px;
+            gap: 4px;
+            margin-bottom: 20px;
+            padding: 4px;
+            display: flex;
+            border: 1px solid var(--sf3);
+        }
+
+        .ttbtn {
+            text-align: center;
+            cursor: pointer;
+            color: var(--dim);
+            border-radius: 8px;
+            flex: 1;
+            padding: 10px;
+            font-size: 14px;
+            font-weight: 700;
+            transition: all .2s;
+        }
+
+        .ttbtn.active {
+            background: var(--sf);
+            color: var(--P);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .cpres {
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+            display: flex;
+        }
+
+        .cpre {
+            border-radius: var(--rs);
+            cursor: pointer;
+            border: 1px solid var(--sf3);
+            background: var(--sf);
+            color: var(--fg2);
+            padding: 8px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.15s;
+        }
+
+        .cpre.sel {
+            border-color: var(--P);
+            color: var(--P);
+            background: rgba(79, 70, 229, 0.06);
+        }
+
+        .cpre:active {
+            transform: scale(0.95);
+            opacity: 0.9;
+        }
+
+        .toast {
+            color: #fff;
+            border-radius: 30px;
+            z-index: 500;
+            opacity: 0;
+            pointer-events: none;
+            text-align: center;
+            background: var(--fg2);
+            width: max-content;
+            max-width: 95vw;
+            padding: 12px 20px;
+            font-size: clamp(12px, 3.5vw, 14px);
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: all .3s;
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translate(-50%) translateY(20px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translate(-50%) translateY(0);
+        }
+
+        .toast.ok {
+            background: var(--ok);
+        }
+
+        .toast.fail {
+            background: var(--err);
+        }
+
+        .toast.tip {
+            background: var(--P);
+        }
+
+        .ldg {
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            padding: 60px 0;
+            display: flex;
+        }
+
+        .spin {
+            border: 3px solid var(--sf3);
+            border-top-color: var(--P);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin .8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .empty {
+            text-align: center;
+            color: var(--dim);
+            padding: 60px 16px;
+        }
+
+        .empty-ic {
+            margin-bottom: 16px;
+            font-size: 54px;
+            opacity: 0.6;
+        }
+
+        .bbar {
+            background: var(--bg-glass);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border-glass);
+            z-index: 150;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            transition: transform .3s;
+            display: flex;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            transform: translateY(100%);
+            box-shadow: var(--shadow-md);
+        }
+
+        .bbar.show {
+            transform: translateY(0);
+        }
+
+        .bbar .btn {
+            flex: 1;
+            padding: 12px 6px;
+            font-size: 13px;
+            border-radius: var(--rs);
+        }
+
+        .binfo {
+            color: var(--fg);
+            white-space: nowrap;
+            flex-shrink: 0;
+            font-size: 13px;
+            font-weight: 800;
+            width: 50px;
+            text-align: center;
+        }
+
+        .hlp {
+            background: var(--sf2);
+            border-radius: var(--rs);
+            color: var(--fg2);
+            margin-bottom: 12px;
+            padding: 14px;
+            font-size: 13px;
+            line-height: 1.7;
+            border: 1px solid var(--sf3);
+        }
+
+        .adetail {
+            border-top: 1px solid var(--sf3);
+            padding: 8px 10px 10px;
+            display: none;
+            margin-top: 6px;
+            background: var(--sf2);
+            border-radius: 0 0 var(--rs) var(--rs);
+        }
+
+        .aitem.dopen .adetail {
+            display: block;
+            animation: fadeIn .2s;
+        }
+
+        .adetail-line {
+            border-bottom: 1px solid var(--sf3);
+            align-items: flex-start;
+            gap: 8px;
+            padding: 6px 0;
+            display: flex;
+        }
+
+        .adetail-line:last-of-type {
+            border-bottom: none;
+        }
+
+        .adetail-txt {
+            color: var(--fg2);
+            word-break: break-all;
+            flex: 1;
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .adetail-core {
+            background: rgba(13, 148, 136, 0.1);
+            color: var(--S);
+            white-space: nowrap;
+            border-radius: 6px;
+            flex-shrink: 0;
+            padding: 2px 8px;
+            font-size: 10px;
+            font-weight: 800;
+        }
+
+        #dbgbox {
+            color: #ef4444;
+            white-space: pre-wrap;
+            background: #fee2e2;
+            border: 1px solid #fca5a5;
+            border-radius: 10px;
+            max-height: 120px;
+            margin-bottom: 12px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 11px;
+            display: none;
+            overflow-y: auto;
+        }
+
+        .opt-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--sf);
+            border: 1px solid var(--sf3);
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .opt-card:active {
+            transform: scale(0.97);
+            background: var(--sf2);
+        }
+
+        .opt-card.primary:hover {
+            border-color: var(--P);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);
+        }
+
+        .opt-card.game:hover {
+            border-color: var(--warn);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
+        }
+
+        .opt-card.danger:hover {
+            border-color: var(--err);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
+        }
+
+        .opt-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .opt-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+
+        .opt-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--fg);
+            margin-bottom: 2px;
+        }
+
+        .opt-desc {
+            font-size: 11px;
+            color: var(--dim);
+        }
+
+        .opt-action {
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            transition: background 0.2s;
+        }
+
+        .opt-card.primary .opt-icon {
+            background: rgba(79, 70, 229, 0.1);
+            color: var(--P);
+        }
+
+        .opt-card.primary .opt-action {
+            background: rgba(79, 70, 229, 0.1);
+            color: var(--P);
+        }
+
+        .opt-card.game .opt-icon {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warn);
+        }
+
+        .opt-card.game .opt-action {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warn);
+        }
+
+        .opt-card.danger .opt-icon {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--err);
+        }
+
+        .opt-card.danger .opt-action {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--err);
+        }
+
+        .custom-sel {
+            position: relative;
+            flex: 2;
+            user-select: none;
+        }
+
+        .custom-sel-trigger {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--sf);
+            border: 1px solid var(--sf3);
+            border-radius: 8px;
+            padding: 10px 12px;
+            height: 100%;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--dim);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .custom-sel-trigger:active {
+            transform: scale(0.97);
+            background: var(--sf2);
+        }
+
+        .cst-text {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--fg);
+        }
+
+        .cst-arrow {
+            font-size: 10px;
+            color: var(--dim);
+            margin-left: 8px;
+            flex-shrink: 0;
+        }
+
+        .custom-sel-options {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: var(--sf);
+            border: 1px solid var(--sf3);
+            border-radius: 12px;
+            z-index: 300;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+            max-height: 220px;
+            overflow-y: auto;
+            display: none;
+            flex-direction: column;
+            padding: 4px;
+        }
+
+        .custom-sel-options.open {
+            display: flex;
+            animation: fadeIn .15s;
+        }
+
+        .custom-sel-options.drop-up {
+            top: auto;
+            bottom: calc(100% + 6px);
+            box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        .custom-sel-opt {
+            padding: 10px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--fg2);
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.15s;
+            margin-bottom: 2px;
+        }
+
+        .custom-sel-opt:last-child {
+            margin-bottom: 0;
+        }
+
+        .custom-sel-opt:hover,
+        .custom-sel-opt:active {
+            background: rgba(79, 70, 229, 0.08);
+            color: var(--P);
+        }
+
+        .bak-item {
+            background: var(--sf2);
+            border: 1px solid var(--sf3);
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-size: 13px;
+            font-family: monospace;
+            color: var(--fg);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .bak-item:active {
+            transform: scale(0.98);
+            background: var(--sf3);
+        }
+
+        .bak-item:hover {
+            border-color: var(--P);
+            color: var(--P);
+        }
+
+        /* ================= 视觉增强 ================= */
+
+        /* 全局平滑滚动 */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* 状态指示灯脉冲动画 */
+        .dot.ok {
+            animation: pulse-ok 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-ok {
+            0%, 100% { box-shadow: 0 0 6px rgba(16, 185, 129, 0.3); }
+            50% { box-shadow: 0 0 14px rgba(16, 185, 129, 0.6); }
+        }
+
+        .dot.err {
+            animation: pulse-err 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse-err {
+            0%, 100% { box-shadow: 0 0 6px rgba(239, 68, 68, 0.3); }
+            50% { box-shadow: 0 0 14px rgba(239, 68, 68, 0.6); }
+        }
+
+        /* Modal 弹窗底部滑入动画 */
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .mov.open .modal {
+            animation: slideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+
+        /* Tab 切换滑动指示器 */
+        .tab {
+            position: relative;
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 16px;
+            height: 3px;
+            background: var(--P);
+            border-radius: 3px;
+            animation: tabIndicate 0.25s ease-out;
+        }
+
+        @keyframes tabIndicate {
+            from { width: 0; opacity: 0; }
+            to { width: 16px; opacity: 1; }
+        }
+
+        /* 列表项交错入场动画 */
+        .alist .aitem {
+            animation: staggerIn 0.3s ease-out both;
+        }
+
+        @keyframes staggerIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 规则卡片入场 */
+        .rcard {
+            animation: cardIn 0.25s ease-out both;
+        }
+
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 按钮按压增强反馈 */
+        .btn:active:not(:disabled) {
+            transform: scale(0.96);
+            filter: brightness(0.92);
+        }
+
+        .bp:active:not(:disabled) {
+            box-shadow: 0 2px 6px rgba(79, 70, 229, 0.15);
+        }
+
+        /* 卡片悬停增强 */
+        .aitem:hover {
+            box-shadow: var(--shadow-sm);
+            border-color: var(--sf3);
+        }
+
+        .rcard:hover {
+            box-shadow: var(--shadow-sm);
+        }
+
+        .opt-card:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Toast 动画优化 */
+        .toast.show {
+            animation: toastIn 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+
+        @keyframes toastIn {
+            0% { opacity: 0; transform: translate(-50%) translateY(20px) scale(0.9); }
+            100% { opacity: 1; transform: translate(-50%) translateY(0) scale(1); }
+        }
+
+        /* 加载旋转器优化 */
+        .spin {
+            animation: spin .8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+
+        /* 芯片按钮微交互 */
+        .chip {
+            transition: all 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+
+        .chip.active {
+            transform: scale(1.02);
+        }
+
+        /* 搜索框增强聚焦态 */
+        .srch input:focus {
+            border-color: var(--P);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15), var(--shadow-sm);
+        }
+
+        /* 搜索框清除按钮 */
+        .srch {
+            position: relative;
+        }
+
+        .srch .srch-clear {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--sf3);
+            color: var(--dim);
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            line-height: 1;
+            transition: all 0.15s;
+        }
+
+        .srch .srch-clear:active {
+            background: var(--dim);
+            color: var(--sf);
+        }
+
+        /* 选中项标记增强 */
+        .aitem.sel {
+            border-color: var(--P);
+            background: rgba(79, 70, 229, 0.04);
+            box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.15);
+        }
+
+        .rcard.sel {
+            border-color: var(--P);
+            background: rgba(79, 70, 229, 0.03);
+            box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.15);
+        }
+
+        /* 标题渐变增强 */
+        .hdr-top h1 {
+            background: linear-gradient(135deg, #4f46e5, #9333ea, #0d9488);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradientShift 6s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* 空状态图标弹跳 */
+        .empty-ic {
+            animation: emptyBounce 2s ease-in-out infinite;
+        }
+
+        @keyframes emptyBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        /* 底部操作栏入场优化 */
+        .bbar.show {
+            animation: barSlideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+
+        @keyframes barSlideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        /* 自定义下拉框优化 */
+        .custom-sel-options.open {
+            animation: dropIn 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+
+        @keyframes dropIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 信息卡片入场 */
+        .page.active .card {
+            animation: cardFadeIn 0.35s ease-out both;
+        }
+
+        @keyframes cardFadeIn {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 信息卡片交错 */
+        .page.active .card:nth-child(1) { animation-delay: 0s; }
+        .page.active .card:nth-child(2) { animation-delay: 0.08s; }
+        .page.active .card:nth-child(3) { animation-delay: 0.16s; }
+        .page.active .card:nth-child(4) { animation-delay: 0.24s; }
+
+        /* 帮助提示块渐变边 */
+        .hlp {
+            border-left: 3px solid var(--P);
+        }
+
+        /* 操作卡片箭头指示 */
+        .opt-action::after {
+            content: ' ›';
+            opacity: 0.5;
+        }
+
+        /* 规则行核心标签微动画 */
+        .rcore, .adetail-core {
+            transition: all 0.15s;
+        }
+
+        .rcard-bd .rline:hover .rcore {
+            background: rgba(13, 148, 136, 0.2);
+            transform: scale(1.05);
+        }
+
+        /* 按钮组间距优化 */
+        .chips-row .btn,
+        .chips-row .chip {
+            transition: all 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+
+        /* 编辑器聚焦态增强 */
+        textarea.ced:focus {
+            border-color: var(--P);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12), inset 0 2px 4px rgba(0, 0, 0, 0.02);
+        }
+
+        /* 备份恢复列表项入场 */
+        .bak-item {
+            animation: bakIn 0.2s ease-out both;
+        }
+
+        .bak-item:nth-child(1) { animation-delay: 0s; }
+        .bak-item:nth-child(2) { animation-delay: 0.04s; }
+        .bak-item:nth-child(3) { animation-delay: 0.08s; }
+        .bak-item:nth-child(4) { animation-delay: 0.12s; }
+        .bak-item:nth-child(5) { animation-delay: 0.16s; }
+
+        @keyframes bakIn {
+            from { opacity: 0; transform: translateX(-12px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* 标签微交互 */
+        .tag {
+            transition: all 0.15s;
+            cursor: default;
+        }
+
+        .tag:hover {
+            filter: brightness(0.9);
+            transform: scale(1.05);
+        }
+
+        /* ================= 深度美化 ================= */
+
+        /* 顶部毛玻璃增强 */
+        .hdr {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            box-shadow: 0 1px 20px rgba(0, 0, 0, 0.04);
+        }
+
+        /* 标题渐变增强 - 更有科技感 */
+        .hdr-top h1 {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 35%, #0d9488 70%, #4f46e5 100%);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradientShift 8s ease infinite;
+            letter-spacing: -0.3px;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Tab 选中滑块动画 */
+        .tabs {
+            background: rgba(0, 0, 0, 0.03);
+            position: relative;
+        }
+
+        .tab {
+            position: relative;
+            z-index: 1;
+        }
+
+        .tab.active {
+            background: var(--sf);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.03);
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 18px;
+            height: 3px;
+            background: var(--P);
+            border-radius: 3px;
+            animation: tabPulse 0.3s ease-out;
+        }
+
+        @keyframes tabPulse {
+            from { width: 0; opacity: 0; }
+            to { width: 18px; opacity: 1; }
+        }
+
+        /* 搜索框质感增强 */
+        .srch input {
+            background: var(--sf);
+            border: 1px solid var(--sf3);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .srch input:focus {
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12), 0 2px 8px rgba(79, 70, 229, 0.08);
+        }
+
+        /* 列表项质感 */
+        .aitem {
+            background: var(--sf);
+            border: 1px solid var(--sf3);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+            transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .aitem:active {
+            transform: scale(0.99);
+            background: var(--sf2);
+        }
+
+        /* 规则卡片增强 */
+        .rcard {
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+            border: 1px solid var(--sf3);
+            transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .rcard.open {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .rcard-hd {
+            padding: 14px 16px;
+        }
+
+        .rbdg {
+            background: linear-gradient(135deg, var(--sf2), var(--sf3));
+            border: none;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        }
+
+        /* 信息页统计卡片增强 */
+        .card {
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+            border: 1px solid var(--sf3);
+            transition: all 0.2s;
+        }
+
+        .card-title {
+            color: var(--P);
+            text-transform: none;
+            letter-spacing: 0;
+            font-size: 15px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--sf2);
+            margin-bottom: 4px;
+        }
+
+        /* 统计数据行增强 */
+        .irow {
+            transition: background 0.15s;
+            padding: 12px 4px;
+            border-radius: 6px;
+        }
+
+        .irow:hover {
+            background: rgba(79, 70, 229, 0.03);
+        }
+
+        .ilabel {
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        .ival {
+            font-size: 13px;
+            letter-spacing: -0.2px;
+        }
+
+        .ival.ok {
+            color: var(--ok);
+            font-weight: 800;
+        }
+
+        /* Modal 拖拽手柄 */
+        .modal {
+            position: relative;
+            box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.12), 0 -2px 10px rgba(0, 0, 0, 0.06);
+        }
+
+        .modal::before {
+            content: '';
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 4px;
+            background: var(--sf3);
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .modal:hover::before {
+            background: var(--dim);
+        }
+
+        /* 模态框标题增强 */
+        .mtitle {
+            font-size: 19px;
+            letter-spacing: -0.3px;
+            padding-top: 8px;
+        }
+
+        /* 底部操作栏增强 */
+        .bbar {
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08), 0 -1px 4px rgba(0, 0, 0, 0.04);
+            border-top: 1px solid rgba(0, 0, 0, 0.04);
+        }
+
+        /* 切换开关按钮组增强 */
+        .ttog {
+            background: var(--sf2);
+            border: 1px solid var(--sf3);
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        .ttbtn.active {
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.03);
+        }
+
+        /* 预选按钮增强 */
+        .cpre {
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+
+        .cpre.sel {
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2), 0 1px 4px rgba(79, 70, 229, 0.1);
+        }
+
+        /* 编辑器页面增强 */
+        textarea.ced {
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.03);
+            line-height: 1.7;
+            tab-size: 2;
+        }
+
+        /* 帮助提示块美化 */
+        .hlp {
+            background: linear-gradient(135deg, rgba(79, 70, 229, 0.04), rgba(13, 148, 136, 0.04));
+            border: 1px solid rgba(79, 70, 229, 0.12);
+            border-left: 3px solid var(--P);
+        }
+
+        /* 信息页 CPU 频率布局展示增强 */
+        #info-cpulayout {
+            font-family: monospace;
+            font-size: 12px;
+            background: var(--sf2);
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--sf3);
+            width: 100%;
+            line-height: 1.8;
+        }
+
+        /* 操作卡片增强 */
+        .opt-card {
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            margin-bottom: 8px;
+            padding: 14px 16px;
+        }
+
+        .opt-icon {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .opt-card.primary .opt-icon {
+            background: linear-gradient(135deg, rgba(79, 70, 229, 0.12), rgba(79, 70, 229, 0.06));
+        }
+
+        .opt-card.game .opt-icon {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.06));
+        }
+
+        .opt-card.danger .opt-icon {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.06));
+        }
+
+        .opt-action {
+            font-size: 11px;
+            letter-spacing: 0.3px;
+        }
+
+        /* 自定义下拉增强 */
+        .custom-sel-trigger {
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        .custom-sel-options {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14), 0 2px 8px rgba(0, 0, 0, 0.06);
+            backdrop-filter: blur(8px);
+        }
+
+        /* 标签增强 */
+        .tag {
+            letter-spacing: 0.2px;
+            font-size: 10px;
+            border-radius: 5px;
+        }
+
+        .tag.tc {
+            background: rgba(5, 150, 105, 0.12);
+            box-shadow: 0 0 0 1px rgba(5, 150, 105, 0.08);
+        }
+
+        .tag.t-game {
+            background: rgba(245, 158, 11, 0.12);
+            box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.08);
+        }
+
+        .tag.t-app {
+            background: rgba(79, 70, 229, 0.12);
+            box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.08);
+        }
+
+        .tag.t-sys {
+            background: rgba(148, 163, 184, 0.12);
+            box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.08);
+        }
+
+        /* 应用图标增强 */
+        .aico {
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        /* 复选框增强 */
+        .achk {
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .aitem.sel .achk,
+        .rcard.sel .achk {
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2), 0 2px 6px rgba(79, 70, 229, 0.25);
+        }
+
+        /* 按钮增强 */
+        .bp {
+            box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25), 0 1px 3px rgba(79, 70, 229, 0.15);
+        }
+
+        .bok {
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2), 0 1px 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .berr {
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2), 0 1px 3px rgba(239, 68, 68, 0.1);
+        }
+
+        .bwarn {
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2), 0 1px 3px rgba(245, 158, 11, 0.1);
+        }
+
+        /* 配置编辑按钮组图标对齐 */
+        .chips-row .btn {
+            gap: 4px;
+            font-size: 12px;
+        }
+
+        /* 数量徽章增强 */
+        .tbdg {
+            box-shadow: 0 1px 4px rgba(79, 70, 229, 0.3);
+            min-width: 20px;
+            font-size: 10px;
+            padding: 2px 7px;
+        }
+
+        /* 空状态增强 */
+        .empty {
+            padding: 80px 24px;
+        }
+
+        .empty-ic {
+            opacity: 0.4;
+            filter: grayscale(0.3);
+        }
+
+        .empty p {
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        /* 主题背景微妙装饰 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            right: -30%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(79, 70, 229, 0.04) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -30%;
+            left: -20%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(13, 148, 136, 0.04) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* 页面切换过渡增强 */
+        .page {
+            animation: pageEnter 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes pageEnter {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 规则行代码风格增强 */
+        .rltxt {
+            color: var(--fg);
+            font-size: 12px;
+            letter-spacing: 0.2px;
+        }
+
+        .rcore {
+            font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+            letter-spacing: 0.5px;
+            background: linear-gradient(135deg, rgba(13, 148, 136, 0.1), rgba(13, 148, 136, 0.05));
+            border: 1px solid rgba(13, 148, 136, 0.15);
+        }
+
+        .adetail-core {
+            font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+            background: linear-gradient(135deg, rgba(13, 148, 136, 0.1), rgba(13, 148, 136, 0.05));
+            border: 1px solid rgba(13, 148, 136, 0.12);
+        }
+
+        /* 备份项增强 */
+        .bak-item {
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        .bak-item:hover {
+            box-shadow: 0 2px 8px rgba(79, 70, 229, 0.1);
+        }
+
+        /* 编辑器搜索栏增强 */
+        .esch {
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        /* 自动规则生成链接按钮增强 */
+        .hlp a, .hlp b {
+            color: var(--P);
+        }
+
+        /* 整体字号微调 */
+        .apkg {
+            font-size: 11.5px;
+            letter-spacing: 0.1px;
+        }
+
+        .aname {
+            letter-spacing: -0.2px;
+        }
+
+        /* ================= 信息页 Hero 区域 ================= */
+        .info-hero {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 40%, #0d9488 100%);
+            border-radius: var(--r);
+            padding: 28px 20px 24px;
+            margin-bottom: 16px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .info-hero::before {
+            content: '';
+            position: absolute;
+            top: -40%;
+            right: -20%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .info-hero::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: -15%;
+            width: 160px;
+            height: 160px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .info-hero-title {
+            font-size: 28px;
+            font-weight: 900;
+            color: #fff;
+            letter-spacing: -0.5px;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .info-hero-sub {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        .info-hero-chips {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 14px;
+            flex-wrap: wrap;
+        }
+
+        .info-chip {
+            background: rgba(255, 255, 255, 0.18);
+            backdrop-filter: blur(4px);
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* 统计网格 */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .stat-card {
+            background: var(--sf);
+            border: 1px solid var(--sf3);
+            border-radius: var(--rs);
+            padding: 16px 12px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            transition: all 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .stat-emoji {
+            font-size: 24px;
+            margin-bottom: 6px;
+        }
+
+        .stat-val {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--fg);
+            margin-bottom: 2px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--dim);
+            font-weight: 500;
+        }
+
+        .stat-card.ok {
+            border-color: rgba(16, 185, 129, 0.3);
+            background: rgba(16, 185, 129, 0.04);
+        }
+
+        .stat-card.ok .stat-val {
+            color: var(--ok);
+        }
+
+        .stat-card.err {
+            border-color: rgba(239, 68, 68, 0.3);
+            background: rgba(239, 68, 68, 0.04);
+        }
+
+        .stat-card.err .stat-val {
+            color: var(--err);
+        }
+
+        /* 帮助说明区域重构 */
+        .help-section {
+            background: var(--sf);
+            border: 1px solid var(--sf3);
+            border-radius: var(--r);
+            overflow: hidden;
+        }
+
+        .help-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--fg);
+            padding: 16px 16px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--sf3);
+        }
+
+        .help-icon {
+            font-size: 18px;
+        }
+
+        .help-block {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--sf3);
+        }
+
+        .help-block:last-child {
+            border-bottom: none;
+        }
+
+        .help-block-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--fg2);
+            margin-bottom: 10px;
+        }
+
+        .help-block.help-app {
+            border-left: 3px solid var(--P);
+        }
+
+        .help-block.help-unity {
+            border-left: 3px solid var(--warn);
+        }
+
+        .help-block.help-nounity {
+            border-left: 3px solid var(--S);
+        }
+
+        .help-kv {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            font-size: 12.5px;
+            color: var(--fg2);
+        }
+
+        .help-kv:not(:last-child) {
+            border-bottom: 1px dashed rgba(0, 0, 0, 0.06);
+        }
+
+        .core-tag {
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 2px 8px;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+
+        .core-high {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.15);
+        }
+
+        .core-mid {
+            background: rgba(79, 70, 229, 0.1);
+            color: var(--P);
+            border: 1px solid rgba(79, 70, 229, 0.15);
+        }
+
+        .core-low {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--ok);
+            border: 1px solid rgba(16, 185, 129, 0.15);
+        }
+
+        /* 暗色模式下信息页适配 */
+        @media (prefers-color-scheme: dark) {
+            .info-hero {
+                box-shadow: 0 4px 20px rgba(79, 70, 229, 0.2);
+            }
+
+            .info-chip {
+                background: rgba(255, 255, 255, 0.12);
+            }
+
+            .stat-card {
+                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+            }
+
+            .stat-card.ok {
+                background: rgba(16, 185, 129, 0.08);
+            }
+
+            .stat-card.err {
+                background: rgba(239, 68, 68, 0.08);
+            }
+
+            .help-block.help-app {
+                border-left-color: var(--P);
+            }
+
+            .help-block.help-unity {
+                border-left-color: var(--warn);
+            }
+
+            .help-block.help-nounity {
+                border-left-color: var(--S);
+            }
+
+            .core-high {
+                background: rgba(239, 68, 68, 0.15);
+                color: #fca5a5;
+                border-color: rgba(239, 68, 68, 0.2);
+            }
+
+            .core-mid {
+                background: rgba(99, 102, 241, 0.15);
+                color: #818cf8;
+                border-color: rgba(99, 102, 241, 0.2);
+            }
+
+            .core-low {
+                background: rgba(16, 185, 129, 0.15);
+                color: #34d399;
+                border-color: rgba(16, 185, 129, 0.2);
+            }
+
+            .help-kv:not(:last-child) {
+                border-bottom-color: rgba(255, 255, 255, 0.06);
+            }
+        }
+
+        /* 页面入场动画 */
+        .info-hero {
+            animation: heroIn 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+
+        @keyframes heroIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .stat-grid .stat-card {
+            animation: statIn 0.35s cubic-bezier(0.32, 0.72, 0, 1) both;
+        }
+
+        .stat-grid .stat-card:nth-child(1) { animation-delay: 0.1s; }
+        .stat-grid .stat-card:nth-child(2) { animation-delay: 0.16s; }
+        .stat-grid .stat-card:nth-child(3) { animation-delay: 0.22s; }
+        .stat-grid .stat-card:nth-child(4) { animation-delay: 0.28s; }
+
+        @keyframes statIn {
+            from { opacity: 0; transform: translateY(12px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="hdr">
+        <div class="hdr-top">
+            <div class="dot" id="dot"></div>
+            <h1>AppOpt 自动线程优化</h1>
+            <span style="background:var(--sf2);color:var(--dim);font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;border:1px solid var(--sf3);white-space:nowrap;">v8</span>
+            <button class="bs bsm btn" onclick="refreshAll()">↻ 刷新</button>
+        </div>
+        <div class="tabs">
+            <div class="active tab" id="tab-apps" onclick="switchTab('apps')">应用<span class="tbdg"
+                    id="bdg-apps">-</span></div>
+            <div class="tab" id="tab-rules" onclick="switchTab('rules')">规则<span class="tbdg" id="bdg-rules">-</span>
+            </div>
+            <div class="tab" id="tab-editor" onclick="switchTab('editor')">配置文件</div>
+            <div class="tab" id="tab-info" onclick="switchTab('info')">状态</div>
+        </div>
+    </div>
+
+    <div class="active page" id="page-apps">
+        <div class="srch">
+            <span class="srch-ic">🔍</span>
+            <input id="searchInput" placeholder="搜索应用名或包名..." oninput="filterApps()">
+            <button class="srch-clear" id="searchClear" onclick="clearSearch('searchInput', 'filterApps', 'searchClear')">✕</button>
+        </div>
+
+        <div class="chips-row filter-conf">
+            <span class="active chip" onclick="setFilterConf('all',this)">全部状态</span>
+            <span class="chip" onclick="setFilterConf('conf',this)">已配置</span>
+            <span class="chip" onclick="setFilterConf('unconf',this)">未配置</span>
+        </div>
+
+        <div class="chips-row filter-sys">
+            <span class="active chip" onclick="setFilterSys('all',this)">全部类型</span>
+            <span class="chip" onclick="setFilterSys('user',this)">用户应用</span>
+            <span class="chip" onclick="setFilterSys('sys',this)">系统应用</span>
+            <span class="chip" onclick="setFilterSys('game',this)">游戏应用</span>
+        </div>
+
+        <div class="chips-row">
+            <button class="bs btn" onclick="selectAllApps()">全选可见</button>
+            <button class="bs btn" onclick="selectNoneApps()">取消全选</button>
+            <button class="bs btn" onclick="selectUnconfigured()">选未配置</button>
+            <button class="bs btn" onclick="toggleDebug()">调试日志</button>
+        </div>
+
+        <div id="dbgbox">等待日志写入...</div>
+        <div id="appListContainer">
+            <div class="ldg">
+                <div class="spin"></div>
+                <p>正在加载应用列表...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="page" id="page-rules">
+        <div class="srch">
+            <span class="srch-ic">🔍</span>
+            <input id="ruleSearch" placeholder="搜索配置名或包名..." oninput="filterRules()">
+            <button class="srch-clear" id="ruleSearchClear" onclick="clearSearch('ruleSearch', 'filterRules', 'ruleSearchClear')">✕</button>
+        </div>
+
+        <div class="chips-row filter-rule">
+            <span class="active chip" onclick="setRuleFilter('all',this)">全部规则</span>
+            <span class="chip" onclick="setRuleFilter('sys',this)">系统APP</span>
+            <span class="chip" onclick="setRuleFilter('app',this)">普通APP</span>
+            <span class="chip" onclick="setRuleFilter('game',this)">游戏规则</span>
+            <span class="chip" onclick="setRuleFilter('uninstalled',this)">未安装应用</span>
+        </div>
+
+        <div class="chips-row" style="margin-bottom:12px;">
+            <button class="bs btn" onclick="selectAllRules()">全选</button>
+            <button class="bs btn" onclick="selectNoneRules()">取消</button>
+            <button class="bs btn" onclick="expandAllRules()">展开</button>
+            <button class="bs btn" onclick="collapseAllRules()">收起</button>
+            <button class="berr btn" onclick="confirmClearAll()">清空</button>
+        </div>
+
+        <div id="rulesContainer">
+            <div class="ldg">
+                <div class="spin"></div>
+                <p>正在加载规则...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="page" id="page-editor">
+        <div class="chips-row">
+            <button class="bok btn" onclick="saveConf()">✓ 保存</button>
+            <button class="bs btn" onclick="loadConf(true)">↻ 重载</button>
+            <button class="bs btn" onclick="backupConf()">💾 备份</button>
+            <button class="bs btn" onclick="openRestoreModal()">📂 恢复</button>
+            <button class="bs btn" onclick="cleanInvalidComments()">🧹 清理</button>
+        </div>
+        <div class="esch">
+            <span style="color:var(--dim);font-size:15px">🔍</span>
+            <input id="editorSearch" placeholder="搜索关键词..." oninput="searchInEditor(0)"
+                onkeydown="if(event.key==='Enter')searchInEditor(event.shiftKey?-1:1)">
+            <span class="esch-info" id="editorSearchInfo"></span>
+            <button class="bs bxs btn" onclick="searchInEditor(-1)">↑</button>
+            <button class="bs bxs btn" onclick="searchInEditor(1)">↓</button>
+        </div>
+        <div class="hlp"><b>提示：</b>直接编辑配置文件原文，保存后即时生效，无需重启。<br>
+            <b>注意：</b>顶部【自动规则生成工具-自定义模板配置区】请勿随意修改包裹标记，否则自动生成工具将无法正常读取模板。
+        </div>
+        <textarea class="ced" id="confEditor" spellcheck="false"></textarea>
+    </div>
+
+    <div class="page" id="page-info">
+        <div class="info-hero">
+            <div class="info-hero-title">AppOpt</div>
+            <div class="info-hero-sub">自动线程优化 · 小米17pm专版</div>
+            <div class="info-hero-chips">
+                <span class="info-chip">v8</span>
+                <span class="info-chip">SM8750 2+6</span>
+                <span class="info-chip" id="info-hero-rules">- 规则</span>
+            </div>
+        </div>
+
+        <div class="stat-grid">
+            <div class="stat-card" id="stat-status">
+                <div class="stat-emoji">⚙️</div>
+                <div class="stat-val" id="stat-proc">-</div>
+                <div class="stat-label">主进程</div>
+            </div>
+            <div class="stat-card" id="stat-conf-card">
+                <div class="stat-emoji">📄</div>
+                <div class="stat-val" id="stat-conf-val">-</div>
+                <div class="stat-label">配置状态</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-emoji">📊</div>
+                <div class="stat-val" id="stat-apps-val">-</div>
+                <div class="stat-label">已配置应用</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-emoji">📱</div>
+                <div class="stat-val" id="stat-inst-val">-</div>
+                <div class="stat-label">已安装匹配</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">模块基础信息</div>
+            <div class="irow"><span class="ilabel">模块名称</span><span class="ival">小米17pm自动线程</span></div>
+            <div class="irow"><span class="ilabel">模块版本</span><span class="ival">v8</span></div>
+            <div class="irow"><span class="ilabel">模块作者</span><span class="ival">Z-Fovik-RT</span></div>
+            <div class="irow"><span class="ilabel">模块目录</span><span class="ival">/data/adb/modules/AppOpt/</span></div>
+            <div class="irow"><span class="ilabel">配置文件路径</span><span
+                    class="ival">/data/adb/modules/AppOpt/applist.conf</span></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">模块运行状态</div>
+            <div class="irow"><span class="ilabel">AppOpt 主进程</span><span class="ival" id="info-proc">检测中...</span>
+            </div>
+            <div class="irow"><span class="ilabel">配置文件状态</span><span class="ival" id="info-conf">检测中...</span></div>
+            <div class="irow"><span class="ilabel">有效规则总数</span><span class="ival" id="info-rules">-</span></div>
+            <div class="irow"><span class="ilabel">已配置应用总数</span><span class="ival" id="info-apps">-</span></div>
+            <div class="irow"><span class="ilabel">本机已安装配置</span><span class="ival" id="info-installed-apps">-</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">设备CPU信息</div>
+            <div class="irow"><span class="ilabel">SOC型号</span><span class="ival" id="info-soc">-</span></div>
+            <div class="irow"><span class="ilabel">CPU核心总数</span><span class="ival" id="info-cpu">-</span></div>
+            <div class="irow" style="flex-direction: column; align-items: flex-start;"><span class="ilabel"
+                    style="margin-bottom: 8px;">CPU频率布局</span><span class="ival" id="info-cpulayout"
+                    style="text-align: left; max-width: 100%;">抓取中...</span></div>
+            <div class="irow"><span class="ilabel">Android版本</span><span class="ival" id="info-android">-</span></div>
+        </div>
+
+        <div class="help-section">
+            <div class="help-title">
+                <span class="help-icon">📖</span>
+                规则核心绑定说明
+            </div>
+            <div class="help-block help-app">
+                <div class="help-block-title">📱 普通APP规则逻辑</div>
+                <div class="help-kv"><span>主线程/渲染/解码线程</span><span class="core-tag core-mid">3-5</span></div>
+                <div class="help-kv"><span>通用工作线程</span><span class="core-tag core-mid">3-5</span></div>
+                <div class="help-kv"><span>binder交互/IO线程</span><span class="core-tag core-low">0-2</span></div>
+                <div class="help-kv"><span>默认兜底线程</span><span class="core-tag core-low">0-2</span></div>
+            </div>
+            <div class="help-block help-unity">
+                <div class="help-block-title">🎮 游戏规则 - 有UnityMain</div>
+                <div class="help-kv"><span>UnityMain主线程</span><span class="core-tag core-high">6-7</span></div>
+                <div class="help-kv"><span>Unity渲染相关线程</span><span class="core-tag core-high">6-7</span></div>
+                <div class="help-kv"><span>RenderThread渲染线程</span><span class="core-tag core-high">6-7</span></div>
+                <div class="help-kv"><span>NativeThread本地线程</span><span class="core-tag core-mid">3-5</span></div>
+                <div class="help-kv"><span>Job.Worker计算线程</span><span class="core-tag core-mid">3-5</span></div>
+                <div class="help-kv"><span>通用/默认兜底线程</span><span class="core-tag core-low">0-5</span></div>
+            </div>
+            <div class="help-block help-nounity">
+                <div class="help-block-title">🎯 游戏规则 - 无UnityMain</div>
+                <div class="help-kv"><span>Main/GameThread</span><span class="core-tag core-high">6-7</span></div>
+                <div class="help-kv"><span>RenderThread渲染线程</span><span class="core-tag core-high">6-7</span></div>
+                <div class="help-kv"><span>*[!e!r]Thread通用线程</span><span class="core-tag core-high">6-7</span></div>
+                <div class="help-kv"><span>NativeThread本地线程</span><span class="core-tag core-mid">3-5</span></div>
+                <div class="help-kv"><span>通用/默认兜底线程</span><span class="core-tag core-low">0-5</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bbar" id="bbar-apps">
+        <span class="binfo" id="binfo-apps">已选 0</span>
+        <button class="bp btn" onclick="openBatchModal('app')">批量加为APP</button>
+        <button class="btn bwarn" onclick="openBatchModal('game')">批量加为游戏</button>
+    </div>
+
+    <div class="bbar" id="bbar-rules">
+        <span class="binfo" id="binfo-rules">已选 0</span>
+        <button class="bp btn" onclick="openBatchModal('app')">重配为 APP</button>
+        <button class="btn bwarn" onclick="openBatchModal('game')">重配为 游戏</button>
+        <button class="berr btn" onclick="batchDeleteRules()">删除</button>
+    </div>
+
+    <div class="mov" id="backupModal" onclick="closeBackupModal(event)">
+        <div class="modal">
+            <div class="mtitle">恢复配置文件</div>
+            <div class="msub">请选择要读取的备份文件（读取后需手动点击保存）</div>
+            <div class="fld">
+                <div id="backupListContainer"
+                    style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                </div>
+            </div>
+            <div class="mbtns">
+                <button class="bs btn" style="width:100%" onclick="closeBackupModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="mov" id="batchModal" onclick="closeBatchModal(event)">
+        <div class="modal">
+            <div class="mtitle" id="batchModalTitle">批量配置应用</div>
+            <div class="msub" id="batchModalSub">选择内置模板或自定义核心绑定范围，规则与模块官方模板完全一致</div>
+
+            <div class="ttog">
+                <div class="active ttbtn" id="ttbtn-app" onclick="switchType('app')">普通APP</div>
+                <div class="ttbtn" id="ttbtn-game" onclick="switchType('game')">游戏规则</div>
+            </div>
+
+            <div id="cfg-app">
+                <div class="fld">
+                    <label>选择模板</label>
+                    <div class="chips-row" style="gap:8px; align-items: stretch; margin-bottom: 4px;">
+                        <input type="hidden" id="tpl-app-select">
+                        <div class="custom-sel" onclick="toggleCS('app', event)">
+                            <div class="custom-sel-trigger">
+                                <span id="cst-app" class="cst-text">加载中...</span>
+                                <span class="cst-arrow">▼</span>
+                            </div>
+                            <div class="custom-sel-options" id="cso-app"></div>
+                        </div>
+                        <button class="bs btn" onclick="saveCurrentAsTemplate('app')">保存</button>
+                        <button class="berr btn" id="tpl-app-del" onclick="deleteTemplate('app')">删除</button>
+                    </div>
+                    <div id="app-tpl-warn"
+                        style="display:none; color:var(--err); font-size:12px; font-weight:bold; margin-top:8px;">⚠️
+                        警告：省电模板会严格限制性能，日常使用强烈建议使用「默认 (均衡)」模板。</div>
+                </div>
+                <div class="fld">
+                    <label>主线程 / 渲染 / 解码线程</label>
+                    <div class="cpres">
+                        <span class="cpre" data-key="app-main" data-val="0-2" onclick="selectCpre(this,'app-main')">省电
+                            0-2</span>
+                        <span class="cpre sel" data-key="app-main" data-val="3-5"
+                            onclick="selectCpre(this,'app-main')">中核 3-5</span>
+                        <span class="cpre" data-key="app-main" data-val="6-7" onclick="selectCpre(this,'app-main')">大核
+                            6-7</span>
+                    </div>
+                    <input id="app-main-input" value="3-5" placeholder="自定义，如 3-5">
+                </div>
+                <div class="fld">
+                    <label>binder / IO 交互线程</label>
+                    <div class="cpres">
+                        <span class="cpre sel" data-key="app-io" data-val="0-2" onclick="selectCpre(this,'app-io')">省电
+                            0-2</span>
+                        <span class="cpre" data-key="app-io" data-val="0-5" onclick="selectCpre(this,'app-io')">中核
+                            0-5</span>
+                    </div>
+                    <input id="app-io-input" value="0-2" placeholder="自定义，如 0-2">
+                </div>
+                <div class="fld">
+                    <label>默认兜底线程</label>
+                    <div class="cpres">
+                        <span class="cpre sel" data-key="app-def" data-val="0-2" onclick="selectCpre(this,'app-def')">小核
+                            0-2</span>
+                        <span class="cpre" data-key="app-def" data-val="0-5"
+                            onclick="selectCpre(this,'app-def')">0-5</span>
+                    </div>
+                    <input id="app-def-input" value="0-2" placeholder="自定义，如 0-2">
+                </div>
+            </div>
+
+            <div id="cfg-game" style="display:none">
+                <div class="fld">
+                    <label>选择游戏引擎模板 (必选)</label>
+                    <div class="chips-row" style="gap:8px; align-items: stretch; margin-bottom: 0;">
+                        <input type="hidden" id="tpl-game-select">
+                        <div class="custom-sel" onclick="toggleCS('game', event)">
+                            <div class="custom-sel-trigger">
+                                <span id="cst-game" class="cst-text">请选择游戏模板</span>
+                                <span class="cst-arrow">▼</span>
+                            </div>
+                            <div class="custom-sel-options" id="cso-game"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="cfg-game-unity-fields" style="display:none">
+                    <div class="fld">
+                        <label>UnityMain / 主渲染线程</label>
+                        <div class="cpres">
+                            <span class="cpre sel" data-key="g-main" data-val="6-7"
+                                onclick="selectCpre(this,'g-main')">大核 6-7</span>
+                            <span class="cpre" data-key="g-main" data-val="7" onclick="selectCpre(this,'g-main')">超大核
+                                7</span>
+                        </div>
+                        <input id="g-main-input" value="6-7">
+                    </div>
+                    <div class="fld">
+                        <label>Unity[!M]* / RenderThread*</label>
+                        <div class="cpres">
+                            <span class="cpre sel" data-key="g-mid" data-val="6-7" onclick="selectCpre(this,'g-mid')">大核
+                                6-7</span>
+                            <span class="cpre" data-key="g-mid" data-val="6" onclick="selectCpre(this,'g-mid')">大核
+                                6</span>
+                        </div>
+                        <input id="g-mid-input" value="6-7">
+                    </div>
+                    <div class="fld">
+                        <label>NativeThread 本地线程</label>
+                        <div class="cpres">
+                            <span class="cpre sel" data-key="g-native" data-val="3-5"
+                                onclick="selectCpre(this,'g-native')">中核 3-5</span>
+                            <span class="cpre" data-key="g-native" data-val="2-5"
+                                onclick="selectCpre(this,'g-native')">中核 2-5</span>
+                        </div>
+                        <input id="g-native-input" value="3-5">
+                    </div>
+                    <div class="fld">
+                        <label>Job.Worker* / 计算密集型线程</label>
+                        <div class="cpres">
+                            <span class="cpre sel" data-key="g-work" data-val="3-5"
+                                onclick="selectCpre(this,'g-work')">中核 3-5</span>
+                            <span class="cpre" data-key="g-work" data-val="2-5" onclick="selectCpre(this,'g-work')">中核
+                                2-5</span>
+                        </div>
+                        <input id="g-work-input" value="3-5">
+                    </div>
+                    <div class="fld">
+                        <label>Thread-* / *[!e!r]Thread 通用线程</label>
+                        <div class="cpres">
+                            <span class="cpre sel" data-key="g-low" data-val="0-5" onclick="selectCpre(this,'g-low')">中核
+                                0-5</span>
+                            <span class="cpre" data-key="g-low" data-val="0-1" onclick="selectCpre(this,'g-low')">小核
+                                0-1</span>
+                        </div>
+                        <input id="g-low-input" value="0-5">
+                    </div>
+                    <div class="fld">
+                        <label>默认兜底线程</label>
+                        <div class="cpres">
+                            <span class="cpre sel" data-key="g-def" data-val="0-5"
+                                onclick="selectCpre(this,'g-def')">0-5</span>
+                        </div>
+                        <input id="g-def-input" value="0-5">
+                    </div>
+                </div>
+
+                <div id="cfg-game-nounity-fields" style="display:none">
+                    <div class="fld">
+                        <label>Main/GameThread / RenderThread</label>
+                        <div class="cpres">
+                            <span class="cpre sel" data-key="nu-main" data-val="6-7"
+                                onclick="selectCpre(this,'nu-main')">大核 6-7</span>
+                            <span class="cpre" data-key="nu-main" data-val="7" onclick="selectCpre(this,'nu-main')">超大核
+                                7</span>
+                        </div>
+                        <input id="nu-main-input" value="6-7">
+                    </div>
+                    <div class="fld">
+                        <label>*[!e!r]Thread / Render Thread*</label>
+                        <div class="cpres">
+                            <span class="cpre sel" data-key="nu-render" data-val="6-7"
+                                onclick="selectCpre(this,'nu-render')">大核 6-7</span>
+                            <span class="cpre" data-key="nu-render" data-val="6"
+                                onclick="selectCpre(this,'nu-render')">大核 6</span>
+                        </div>
+                        <input id="nu-render-input" value="6-7">
+                    </div>
+                    <div class="fld">
+                        <label>NativeThread (负载均衡)</label>
+                        <div class="cpres">
+                            <span class="cpre sel" data-key="nu-mid" data-val="3-5"
+                                onclick="selectCpre(this,'nu-mid')">中核 3-5</span>
+                            <span class="cpre" data-key="nu-mid" data-val="2-5" onclick="selectCpre(this,'nu-mid')">中核
+                                2-5</span>
+                        </div>
+                        <input id="nu-mid-input" value="3-5">
+                    </div>
+                    <div class="fld">
+                        <label>Thread* (通用工作线程)</label>
+                        <div class="cpres">
+                            <span class="cpre sel" data-key="nu-low" data-val="0-5"
+                                onclick="selectCpre(this,'nu-low')">中核 0-5</span>
+                            <span class="cpre" data-key="nu-low" data-val="0-1" onclick="selectCpre(this,'nu-low')">小核
+                                0-1</span>
+                        </div>
+                        <input id="nu-low-input" value="0-5">
+                    </div>
+                    <div class="fld">
+                        <label>默认兜底线程</label>
+                        <div class="cpres">
+                            <span class="cpre sel" data-key="nu-def" data-val="0-5"
+                                onclick="selectCpre(this,'nu-def')">0-5</span>
+                        </div>
+                        <input id="nu-def-input" value="0-5">
+                    </div>
+                </div>
+            </div>
+
+            <div id="batchPreview" style="display:none; margin-top: 16px;">
+                <div class="fld"><label>规则预览 (与官方模板完全一致)</label>
+                    <pre style="background:var(--sf2);border:1px solid var(--sf3);border-radius:var(--rs);color:var(--S);white-space:pre-wrap;max-height:140px;padding:12px;font-size:11px;line-height:1.6;overflow-y:auto;font-family:monospace;"
+                        id="previewText"></pre>
+                </div>
+            </div>
+
+            <div class="mbtns">
+                <button class="bs btn" onclick="closeBatchModal()">取消</button>
+                <button class="bs btn" onclick="previewRule()">预览</button>
+                <button class="bp btn" onclick="applyBatch()">确认写入</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="mov" id="singleModal" onclick="closeSingleModal(event)">
+        <div class="modal">
+            <div class="mtitle">编辑应用配置</div>
+            <div class="msub" id="singleModalSub">修改或删除该应用的线程规则</div>
+            <div class="fld">
+                <input id="singlePkg" readonly
+                    style="color:var(--dim); font-family: monospace; text-align: center; width: 100%; padding: 12px; border: 1px solid var(--sf3); border-radius: var(--rs); background: var(--sf2); outline: none;">
+            </div>
+
+            <div class="fld">
+                <div style="display:flex; flex-direction:column; gap:0;">
+                    <div class="opt-card primary" onclick="editAsApp()">
+                        <div class="opt-icon">📱</div>
+                        <div class="opt-info">
+                            <div class="opt-title">重新配置为普通 APP</div>
+                            <div class="opt-desc">应用通用调度规则 (均衡省电)</div>
+                        </div>
+                        <div class="opt-action">配置</div>
+                    </div>
+                    <div class="opt-card game" onclick="editAsGame()">
+                        <div class="opt-icon">🎮</div>
+                        <div class="opt-info">
+                            <div class="opt-title">重新配置为游戏</div>
+                            <div class="opt-desc">应用满血性能规则 (性能优先)</div>
+                        </div>
+                        <div class="opt-action">配置</div>
+                    </div>
+                    <div class="opt-card danger" onclick="deleteAppRules()" style="margin-bottom:0;">
+                        <div class="opt-icon">🗑️</div>
+                        <div class="opt-info">
+                            <div class="opt-title">删除规则</div>
+                            <div class="opt-desc">移除该应用的所有自定义线程优化</div>
+                        </div>
+                        <div class="opt-action">删除</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mbtns">
+                <button class="bs btn" style="width:100%" onclick="closeSingleModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="mov" id="customDialogModal" style="z-index: 1000;" onclick="closeCustomDialog(event)">
+        <div class="modal"
+            style="max-width: 340px; padding: 24px; text-align: center; border-radius: 20px; margin: auto; max-height: 80vh;">
+            <div class="mtitle" id="cdTitle" style="font-size: 16px; margin-bottom: 12px;"></div>
+            <div class="msub" id="cdMsg"
+                style="font-size: 14px; margin-bottom: 20px; color: var(--fg2); white-space: pre-wrap;"></div>
+            <input id="cdInput" class="fld input"
+                style="display:none; width: 100%; margin-bottom: 20px; text-align:center; padding: 12px; border: 1px solid var(--sf3); border-radius: var(--rs); background: var(--sf2); outline: none; color: var(--fg);" />
+            <div class="mbtns" style="margin-top: 0; gap: 10px;">
+                <button class="bs btn" id="cdCancelBtn">取消</button>
+                <button class="bp btn" id="cdConfirmBtn">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script type="text/javascript">
+        const CONF_PATH = "/data/adb/modules/AppOpt/applist.conf";
+        const BAK_DIR = "/data/adb/modules/AppOpt/规则配置备份";
+        const MOD_DIR = "/data/adb/modules/AppOpt";
+        const GAME_KEYWORDS = "game|games|play|王者|荣耀|和平|精英|原神|崩坏|阴阳师|决战|平安京|火影|忍者|CF|穿越火线|LOL|英雄联盟|DNF|地下城|冒险岛|梦幻西游|大话西游|魔兽|炉石|传说|刀塔|自走棋|金铲铲|三国杀|第五人格|明日之后|明日方舟|少女前线|碧蓝航线|战舰|少女|崩坏3|崩坏星穹铁道|绝区零|鸣潮|战双|帕弥什|幻塔|天涯明月刀|完美世界|诛仙|问道|问道手游|问道外传|问道奇经|问道经典|问道怀旧|问道新服|问道新区|问道老区|问道专区|问道专服|问道专版";
+
+        let allApps = [];
+        let configuredPkgs = new Set();
+        let rawConfig = "";
+        let configTemplates = { app: null, gameUnity: null, gameNoUnity: null };
+
+        let activeTab = "apps";
+        let filterConf = "all";
+        let filterSys = "all";
+        let searchAppQuery = "";
+        let currentRuleFilter = "all";
+        let searchRuleQuery = "";
+        let selectedPkgs = new Set();
+        let batchType = "app";
+        let currentGameMode = "none";
+        let singleTargetPkg = "";
+        let _execCounter = 0;
+
+        function getBJTime() {
+            let d = new Date();
+            let utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+            let bj = new Date(utc + (3600000 * 8));
+            let p = n => n < 10 ? '0' + n : n;
+            return `${bj.getFullYear()}年${p(bj.getMonth() + 1)}月${p(bj.getDate())}日_${p(bj.getHours())}时${p(bj.getMinutes())}分${p(bj.getSeconds())}秒`;
+        }
+
+        function execShell(cmd) {
+            logDebug("执行: " + cmd.substring(0, 60));
+            return new Promise(resolve => {
+                if (typeof window.webui !== 'undefined' && typeof window.webui.exec === 'function') {
+                    window.webui.exec(cmd, (exitCode, stdout, stderr) => {
+                        resolve({ code: exitCode || 0, out: stdout || '', err: stderr || '' });
+                    });
+                    return;
+                }
+                if (typeof kernelsu !== 'undefined' && typeof kernelsu.exec === 'function') {
+                    kernelsu.exec(cmd).then(r => resolve({ code: r?.errno || 0, out: r?.stdout || '', err: r?.stderr || '' })).catch(e => resolve({ code: 1, out: '', err: e.message }));
+                    return;
+                }
+                if (typeof ksu !== 'undefined' && typeof ksu.exec === 'function') {
+                    try {
+                        let res = ksu.exec(cmd);
+                        if (res && typeof res.then === 'function') {
+                            res.then(r => resolve({ code: r?.errno || r?.code || 0, out: r?.stdout || r?.out || '', err: r?.stderr || r?.err || '' })).catch(e => resolve({ code: 1, out: '', err: e.message }));
+                        } else if (typeof res === 'string' || typeof res === 'undefined') {
+                            const cb = '_cb_' + Date.now() + '_' + _execCounter++;
+                            window[cb] = (errno, stdout, stderr) => { delete window[cb]; resolve({ code: errno || 0, out: stdout || '', err: stderr || '' }); };
+                            ksu.exec(cmd, '{}', cb);
+                        } else { resolve({ code: res?.errno || res?.code || 0, out: res?.stdout || res?.out || '', err: res?.stderr || res?.err || '' }); }
+                    } catch (e) {
+                        const cb = '_cb_' + Date.now() + '_' + _execCounter++;
+                        window[cb] = (errno, stdout, stderr) => { delete window[cb]; resolve({ code: errno || 0, out: stdout || '', err: stderr || '' }); };
+                        ksu.exec(cmd, '{}', cb);
+                    }
+                    return;
+                }
+                if (typeof exec_command !== 'undefined') { resolve({ code: 0, out: exec_command(cmd) || '', err: '' }); return; }
+                resolve({ code: 1, out: '', err: '无Root接口' });
+            });
+        }
+
+        function logDebug(msg) {
+            let box = document.getElementById("dbgbox");
+            if (box) { box.textContent += "\n[AppOpt] " + msg; box.scrollTop = box.scrollHeight; }
+            console.log("[AppOpt]", msg);
+        }
+
+        function toggleDebug() {
+            let box = document.getElementById("dbgbox");
+            box.style.display = window.getComputedStyle(box).display === "none" ? "block" : "none";
+        }
+
+        let toastTimer = null;
+        function showToast(msg, typeClass) {
+            let toast = document.getElementById("toast");
+            toast.textContent = msg;
+            toast.className = "toast show " + (typeClass || "");
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.remove("show"), 2800);
+        }
+
+        function escapeHtml(str) { return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+
+        function toggleClearBtn(inputId, clearId) {
+            let el = document.getElementById(inputId);
+            let btn = document.getElementById(clearId);
+            if (el && btn) btn.style.display = el.value ? "flex" : "none";
+        }
+
+        function clearSearch(inputId, callbackName, clearId) {
+            let el = document.getElementById(inputId);
+            if (el) { el.value = ""; el.focus(); }
+            if (typeof window[callbackName] === 'function') window[callbackName]();
+            let btn = document.getElementById(clearId);
+            if (btn) btn.style.display = "none";
+        }
+
+        let _dialogResolve = null;
+        function showCustomDialog(options) {
+            document.getElementById("cdTitle").textContent = options.title || "提示";
+            document.getElementById("cdMsg").textContent = options.msg || "";
+            let inp = document.getElementById("cdInput");
+            if (options.isPrompt) { inp.style.display = "block"; inp.value = ""; inp.placeholder = options.placeholder || ""; } else { inp.style.display = "none"; }
+            let btnConfirm = document.getElementById("cdConfirmBtn");
+            btnConfirm.className = options.danger ? "berr btn" : "bp btn";
+            btnConfirm.textContent = options.confirmText || "确认";
+            let modal = document.getElementById("customDialogModal");
+            modal.classList.add("open");
+
+            return new Promise((resolve) => {
+                _dialogResolve = resolve;
+                btnConfirm.onclick = () => {
+                    modal.classList.remove("open");
+                    let val = options.isPrompt ? inp.value.trim() : true;
+                    if (options.onConfirm) options.onConfirm(val);
+                    if (_dialogResolve) { _dialogResolve(val); _dialogResolve = null; }
+                };
+                document.getElementById("cdCancelBtn").onclick = () => {
+                    modal.classList.remove("open");
+                    if (_dialogResolve) { _dialogResolve(false); _dialogResolve = null; }
+                };
+            });
+        }
+
+        function closeCustomDialog(event) {
+            if (!event || event.target.id === "customDialogModal") {
+                document.getElementById("customDialogModal").classList.remove("open");
+                if (_dialogResolve) { _dialogResolve(false); _dialogResolve = null; }
+            }
+        }
+
+        async function checkStatus() {
+            let dot = document.getElementById("dot");
+            logDebug("开始刷新系统层状态...");
+            let pidRes = await execShell('pgrep -f "/data/adb/modules/AppOpt/AppOpt" | head -1 || pgrep -x AppOpt | head -1');
+            let confRes = await execShell(`test -f ${CONF_PATH} && echo ok || echo missing`);
+            let socRes = await execShell("getprop ro.soc.model 2>/dev/null || getprop ro.board.platform");
+            let osRes = await execShell("getprop ro.build.version.release");
+            let freqRes = await execShell('for p in /sys/devices/system/cpu/cpufreq/policy*/cpuinfo_max_freq; do f=$(cat $p 2>/dev/null); c=$(cat ${p%cpuinfo_max_freq}related_cpus 2>/dev/null | tr " " "-"); [ -n "$f" ] && echo "$f:$c"; done | sort -t: -k1 -n');
+
+            let presentRes = await execShell("cat /sys/devices/system/cpu/present 2>/dev/null");
+            let cores = "?";
+            let present = presentRes.out.trim();
+            if (present.includes("-")) {
+                cores = parseInt(present.split("-")[1]) + 1;
+            } else if (present !== "") {
+                cores = parseInt(present) + 1;
+            } else {
+                let wcRes = await execShell("ls -d /sys/devices/system/cpu/cpu[0-9]* 2>/dev/null | wc -l");
+                cores = wcRes.out.trim() || "?";
+            }
+
+            let pid = pidRes.out.trim();
+            let isRunning = !!pid;
+            let hasConf = confRes.out.trim() === "ok";
+
+            dot.className = "dot " + (isRunning && hasConf ? "ok" : "err");
+
+            let procEl = document.getElementById("info-proc");
+            procEl.textContent = isRunning ? "运行中 PID:" + pid : "未运行 ❌";
+            procEl.className = "ival " + (isRunning ? "ok" : "err");
+
+            let confEl = document.getElementById("info-conf");
+            confEl.textContent = hasConf ? "正常 ✓" : "文件不存在 ❌";
+            confEl.className = "ival " + (hasConf ? "ok" : "err");
+
+            let installedConfiguredPkgs = Array.from(configuredPkgs).filter(pkg => allApps.some(a => a.pkg === pkg));
+
+            document.getElementById("info-rules").textContent = configuredPkgs.size + " 条";
+            document.getElementById("info-apps").textContent = configuredPkgs.size + " 个";
+            document.getElementById("info-installed-apps").textContent = installedConfiguredPkgs.length + " 个";
+            document.getElementById("info-soc").textContent = socRes.out.trim() || "未知";
+            document.getElementById("info-cpu").textContent = cores + " 核";
+            document.getElementById("info-android").textContent = osRes.out.trim() || "未知";
+
+            // 更新统计卡片
+            let statProc = document.getElementById("stat-proc");
+            let statConfVal = document.getElementById("stat-conf-val");
+            statProc.textContent = isRunning ? "运行中" : "未运行";
+            statProc.style.color = isRunning ? "var(--ok)" : "var(--err)";
+            statConfVal.textContent = hasConf ? "正常" : "异常";
+            statConfVal.style.color = hasConf ? "var(--ok)" : "var(--err)";
+            document.getElementById("stat-apps-val").textContent = configuredPkgs.size;
+            document.getElementById("stat-inst-val").textContent = installedConfiguredPkgs.length;
+
+            // 更新 Hero 区域
+            let heroRules = document.getElementById("info-hero-rules");
+            if (heroRules) heroRules.textContent = configuredPkgs.size + " 规则";
+
+            if (freqRes.out) {
+                let layoutStr = freqRes.out.trim().split("\n").map(line => {
+                    let parts = line.split(":");
+                    if (!parts[0]) return "";
+                    let freqMhz = Math.round(parseInt(parts[0]) / 1000);
+                    return `CPU${parts[1] || "?"} @${freqMhz}MHz`;
+                }).filter(Boolean).join("  |  ");
+                if (layoutStr) document.getElementById("info-cpulayout").textContent = layoutStr;
+            }
+        }
+
+        function parseConfigTemplates() {
+            if (!rawConfig) return;
+            const parseTemplate = (startMark, endMark) => {
+                const regex = new RegExp(`# ==== ${startMark} 开始 ====([\\s\\S]*?)# ==== ${endMark} 结束 ====`, 'm');
+                const match = rawConfig.match(regex);
+                if (!match) return null;
+                return match[1].split('\n').map(line => line.replace(/^#/, '').trim()).filter(line => line && !line.startsWith('#')).join('\n');
+            };
+
+            configTemplates.app = parseTemplate("普通APP模板", "普通APP模板");
+            configTemplates.gameUnity = parseTemplate("有UnityMain游戏模板", "有UnityMain游戏模板");
+            configTemplates.gameNoUnity = parseTemplate("无UnityMain游戏模板", "无UnityMain游戏模板");
+            logDebug("已解析配置文件中的自定义模板");
+        }
+
+        async function loadConf(isNotify) {
+            let res = await execShell(`cat ${CONF_PATH} 2>/dev/null || echo ""`);
+            rawConfig = res.out;
+            document.getElementById("confEditor").value = rawConfig;
+
+            parseConfigTemplates();
+            configuredPkgs.clear();
+            let lines = rawConfig.split("\n");
+            for (let line of lines) {
+                let t = line.trim();
+                if (!t || t.startsWith("#") || t.startsWith("USER_")) continue;
+                let match = t.match(/^([a-zA-Z][a-zA-Z0-9._]+)/);
+                if (match) configuredPkgs.add(match[1]);
+            }
+            document.getElementById("bdg-rules").textContent = configuredPkgs.size;
+            if (isNotify) showToast("已重新加载配置", "ok");
+        }
+
+        async function saveConf() {
+            let text = document.getElementById("confEditor").value;
+            let safeText = text.replace(/'/g, "'\"'\"'");
+            let res = await execShell(`echo '${safeText}' > ${CONF_PATH}`);
+            if (res.code === 0) {
+                rawConfig = text;
+                await loadConf(false);
+                renderApps();
+                renderRules();
+                checkStatus();
+                showToast("保存成功，规则即时生效", "ok");
+                logDebug("配置已保存到文件");
+            } else { showToast("写入失败: " + res.err, "fail"); }
+        }
+
+        async function backupConf() {
+            let ts = getBJTime().replace(/_/g, " ").split(" ")[0] + "_" + getBJTime().split("_")[1].replace(/时/g, "时").replace(/分/g, "分").replace(/秒/g, "秒").split("秒")[0];
+            let dest = `${BAK_DIR}/配置备份_${ts}.conf`;
+
+            let res = await execShell(`mkdir -p ${BAK_DIR} && cp ${CONF_PATH} "${dest}"`);
+
+            if (res.code === 0) {
+                showToast("备份成功: " + dest, "ok");
+                logDebug("已备份: " + dest);
+            } else {
+                showToast("备份失败", "fail");
+            }
+        }
+
+        async function openRestoreModal() {
+            showToast("正在获取备份列表...", "tip");
+            let res = await execShell(`ls -1t ${BAK_DIR}/*.conf 2>/dev/null`);
+            let files = (res.out || "").trim().split("\n").filter(Boolean);
+
+            let container = document.getElementById("backupListContainer");
+            if (files.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--dim);">未找到任何备份文件</div>';
+            } else {
+                container.innerHTML = files.map(f => {
+                    let fname = f.split('/').pop();
+                    let displayName = fname.replace("配置备份_", "").replace(".conf", "").replace("_", "  ");
+                    return `<div class="bak-item" onclick="loadBackupFile('${escapeHtml(fname)}')">
+                        <div style="font-size: 16px;">📄</div>
+                        <div>${escapeHtml(displayName)}</div>
+                    </div>`;
+                }).join("");
+            }
+            document.getElementById("backupModal").classList.add("open");
+        }
+
+        function closeBackupModal(event) {
+            if (!event || event.target.id === "backupModal") { document.getElementById("backupModal").classList.remove("open"); }
+        }
+
+        async function loadBackupFile(fname) {
+            closeBackupModal();
+            showCustomDialog({
+                title: "读取备份",
+                msg: `确定要读取备份 [ ${fname} ] 吗？\n(读取后需手动点击界面的 保存 才会生效)`,
+                onConfirm: async () => {
+                    let res = await execShell(`cat ${BAK_DIR}/${fname} 2>/dev/null`);
+                    if (res.code === 0) {
+                        rawConfig = res.out;
+                        document.getElementById("confEditor").value = rawConfig;
+                        showToast("已读取备份内容，请检查后点击保存", "ok");
+                    } else { showToast("读取备份失败", "fail"); }
+                }
+            });
+        }
+
+        function cleanInvalidComments() {
+            showCustomDialog({
+                title: "清理无效备注",
+                msg: "此操作将扫描并清除没有规则的空应用名备注和多余空行。\n\n(已开启智能保护：文件顶部说明、自定义模板区、全局配置将被完美保留)\n\n※ 读取后需手动点击界面左上角的“保存”才会生效！",
+                confirmText: "确认清理",
+                onConfirm: () => {
+                    let lines = document.getElementById("confEditor").value.split('\n');
+                    let newLines = [];
+                    let currentSectionLines = [];
+                    let hasRuleOrProtected = false;
+                    let foundFirstRule = false;
+
+                    for (let i = 0; i < lines.length; i++) {
+                        let line = lines[i];
+                        let t = line.trim();
+                        let isSectionHeader = t.match(/^#\s*={4,}.*={4,}$/);
+                        let isRule = t.match(/^[a-zA-Z0-9._]+[{=:]/) && !t.startsWith("USER_");
+                        let isProtectedFeature = t.includes("{{PKG_NAME}}") || t.includes("{{APP_NAME}}") || t.includes("模板") || t.startsWith("USER_") || t.includes("系统APP") || t.includes("==================");
+
+                        if (isRule) foundFirstRule = true;
+
+                        if (isSectionHeader) {
+                            if (!foundFirstRule || hasRuleOrProtected) { newLines.push(...currentSectionLines); }
+                            currentSectionLines = [line];
+                            hasRuleOrProtected = false;
+                        } else {
+                            currentSectionLines.push(line);
+                            if (isRule || isProtectedFeature) { hasRuleOrProtected = true; }
+                        }
+                    }
+
+                    if (!foundFirstRule || hasRuleOrProtected) { newLines.push(...currentSectionLines); }
+                    let finalText = newLines.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
+                    document.getElementById("confEditor").value = finalText;
+                    showToast("清理完成，请检查无误后点击保存", "ok");
+                }
+            });
+        }
+
+        async function fetchApps() {
+            let container = document.getElementById("appListContainer");
+            container.innerHTML = '<div class="ldg"><div class="spin"></div><p>正在获取底层应用...</p></div>';
+            logDebug("开始获取已安装应用列表");
+
+            let pkgs = [];
+            if (typeof ksu !== 'undefined' && typeof ksu.listPackages === 'function') {
+                try {
+                    let raw = ksu.listPackages("all");
+                    pkgs = Array.isArray(raw) ? raw : (typeof raw === 'string' ? JSON.parse(raw || '[]') : []);
+                } catch (e) { }
+            }
+
+            if (!pkgs.length) {
+                let pmRes = await execShell("pm list packages 2>/dev/null");
+                pkgs = (pmRes.out || "").split("\n").map(l => l.replace("package:", "").trim()).filter(Boolean);
+            }
+
+            if (!pkgs.length) {
+                container.innerHTML = '<div class="empty"><div class="empty-ic">&#128683;</div><p>无法获取应用列表，请确认 Root 权限</p></div>';
+                return;
+            }
+
+            let metaMap = new Map();
+            if (typeof ksu !== 'undefined' && typeof ksu.getPackagesInfo === 'function') {
+                try {
+                    JSON.parse(ksu.getPackagesInfo(JSON.stringify(pkgs))).forEach((info, idx) => {
+                        if (info?.packageName || pkgs[idx]) metaMap.set(info?.packageName || pkgs[idx], info || {});
+                    });
+                } catch (e) { }
+            }
+
+            let sysSet = new Set();
+            if (!metaMap.size) {
+                let sysRes = await execShell("pm list packages -s 2>/dev/null");
+                sysSet = new Set((sysRes.out || "").split("\n").map(l => l.replace("package:", "").trim()).filter(Boolean));
+            }
+
+            allApps = pkgs.map(pkg => {
+                let meta = metaMap.get(pkg) || {};
+                let name = meta.appLabel || meta.label || meta.appName || meta.name;
+                if (!name) { let parts = pkg.split('.'); name = parts[parts.length - 1]; name = name.charAt(0).toUpperCase() + name.slice(1); }
+                let isSys = metaMap.size ? (meta.isSystem === true || (meta.flags && !(meta.flags & 1))) : sysSet.has(pkg);
+                let isGame = new RegExp(GAME_KEYWORDS, 'i').test(pkg + " " + name);
+                let iconUrl = typeof ksu !== 'undefined' ? `ksu://icon/${pkg}` : null;
+                return { pkg, name, sys: isSys, game: isGame, conf: configuredPkgs.has(pkg), icon: iconUrl };
+            }).sort((a, b) => {
+                if (a.conf !== b.conf) return a.conf ? -1 : 1;
+                if (a.game !== b.game) return a.game ? -1 : 1;
+                return a.name.localeCompare(b.name);
+            });
+
+            document.getElementById("bdg-apps").textContent = allApps.length;
+            renderApps();
+        }
+
+        function getFilteredApps() {
+            let lowerQ = searchAppQuery.toLowerCase();
+            return allApps.filter(app => {
+                if (filterConf === "conf" && !app.conf) return false;
+                if (filterConf === "unconf" && app.conf) return false;
+                if (filterSys === "sys" && !app.sys) return false;
+                if (filterSys === "user" && app.sys) return false;
+                if (filterSys === "game" && !app.game) return false;
+                if (lowerQ && !app.pkg.toLowerCase().includes(lowerQ) && !app.name.toLowerCase().includes(lowerQ)) return false;
+                return true;
+            });
+        }
+
+        function getHashColor(str) {
+            let colors = ["#4f46e5", "#0288d1", "#0d9488", "#dc2626", "#ea580c", "#9333ea", "#16a34a", "#2563eb"];
+            let h = 0; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+            return colors[h % colors.length];
+        }
+
+        function generateIcon(url, name, pkg, sizeStr) {
+            const ch = escapeHtml((name || '?').charAt(0).toUpperCase());
+            const bg = getHashColor(pkg || name);
+            const style = sizeStr ? `width:${sizeStr};height:${sizeStr};font-size:calc(${sizeStr} * 0.45);` : '';
+            if (url) {
+                return `<div class="aico" style="position:relative; overflow:hidden; background:${bg}; ${style}">
+                    <div style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800;">${ch}</div>
+                    <img src="${url}" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:1;" onerror="this.style.display='none'">
+                </div>`;
+            } else { return `<div class="aico aico-txt" style="background:${bg}; ${style}">${ch}</div>`; }
+        }
+
+        function renderApps() {
+            allApps.forEach(a => a.conf = configuredPkgs.has(a.pkg));
+            let visible = getFilteredApps();
+            let container = document.getElementById("appListContainer");
+
+            if (visible.length === 0) {
+                container.innerHTML = '<div class="empty"><div class="empty-ic">&#128269;</div><p>没有匹配的应用</p></div>';
+                return;
+            }
+
+            let html = visible.map(app => {
+                let isSel = selectedPkgs.has(app.pkg);
+                let isConf = app.conf;
+                let iconHtml = generateIcon(app.icon, app.name, app.pkg, '42px');
+                let detHtml = isConf ? `<div class="adetail" id="adetail-${app.pkg.replace(/\./g, "_")}"></div>` : "";
+
+                let tags = [];
+                if (isConf) tags.push('<span class="tag tc">已配置</span>');
+                if (app.game) tags.push('<span class="tag t-game">游戏</span>');
+                if (app.sys) tags.push('<span class="tag t-sys">系统</span>');
+                if (!app.sys && !app.game) tags.push('<span class="tag t-app">用户</span>');
+
+                return `
+        <div class="aitem ${isSel ? 'sel' : ''}" data-pkg="${app.pkg}" onclick="toggleSelectApp('${app.pkg}', event)">
+            <div class="achk"><span class="achkm">&#10003;</span></div>
+            ${iconHtml}
+            <div class="ainf">
+                <div class="aname">${escapeHtml(app.name)}</div>
+                <div class="apkg">${escapeHtml(app.pkg)}</div>
+                <div class="atags">${tags.join("")}</div>
+            </div>
+            ${isConf ? `<button class="btn bs bxs" onclick="openSingleModal('${app.pkg}', event)">管理</button>` : ''}
+            ${detHtml}
+        </div>`;
+            }).join("");
+
+            container.innerHTML = `<div class="alist">${html}</div>`;
+        }
+
+        function setFilterConf(type, el) {
+            if (el.classList.contains('active') && type !== 'all') {
+                type = 'all';
+                el = document.querySelector('.filter-conf .chip:first-child');
+            }
+            filterConf = type;
+            document.querySelectorAll(".filter-conf .chip").forEach(n => n.classList.remove("active"));
+            el.classList.add("active");
+            renderApps();
+        }
+
+        function setFilterSys(type, el) {
+            if (el.classList.contains('active') && type !== 'all') {
+                type = 'all';
+                el = document.querySelector('.filter-sys .chip:first-child');
+            }
+            filterSys = type;
+            document.querySelectorAll(".filter-sys .chip").forEach(n => n.classList.remove("active"));
+            el.classList.add("active");
+            renderApps();
+        }
+
+        function filterApps() {
+            searchAppQuery = document.getElementById("searchInput").value;
+            toggleClearBtn("searchInput", "searchClear");
+            renderApps();
+        }
+
+        function toggleSelectApp(pkg, event) {
+            if (event && event.target.closest(".btn")) return;
+            if (selectedPkgs.has(pkg)) selectedPkgs.delete(pkg); else selectedPkgs.add(pkg);
+            updateSelectionBar();
+            let node = document.querySelector(`.aitem[data-pkg="${pkg}"]`);
+            if (node) node.classList.toggle("sel", selectedPkgs.has(pkg));
+            if (configuredPkgs.has(pkg)) toggleAppDetails(pkg);
+        }
+
+        function selectAllApps() { getFilteredApps().forEach(a => selectedPkgs.add(a.pkg)); updateSelectionBar(); renderApps(); }
+        function selectNoneApps() { selectedPkgs.clear(); updateSelectionBar(); renderApps(); }
+        function selectUnconfigured() { getFilteredApps().filter(a => !a.conf).forEach(a => selectedPkgs.add(a.pkg)); updateSelectionBar(); renderApps(); }
+
+        function parseRulesMap() {
+            let dict = {};
+            rawConfig.split("\n").forEach(line => {
+                let t = line.trim();
+                if (!t || t.startsWith("#") || t.startsWith("USER_")) return;
+                let match = t.match(/^([a-zA-Z][a-zA-Z0-9._]+)/);
+                if (match) {
+                    let pkg = match[1];
+                    if (!dict[pkg]) dict[pkg] = [];
+                    dict[pkg].push(t);
+                }
+            });
+            return dict;
+        }
+
+        function identifyRuleType(rows) {
+            let str = rows.join(" ");
+            if (str.includes("UnityMain") || str.includes("Unity[!M]*") || str.includes("GameThread") || str.includes("UEGameThread") || str.includes("TaskGraphNP")) { return "game"; }
+            return "app";
+        }
+
+        function identifyRuleCategory(pkg, rows) {
+            let str = rows.join(" ");
+            if (str.includes("系统APP")) return "sys";
+            if (str.includes("UnityMain") || str.includes("Unity[!M]*") || str.includes("GameThread") || str.includes("UEGameThread") || str.includes("TaskGraphNP")) { return "game"; }
+            return "app";
+        }
+
+        function renderRules() {
+            let dict = parseRulesMap();
+            let keys = Object.keys(dict);
+            let container = document.getElementById("rulesContainer");
+            document.getElementById("bdg-rules").textContent = keys.length;
+
+            if (keys.length === 0) return container.innerHTML = '<div class="empty"><div class="empty-ic">&#128196;</div><p>暂无规则配置</p></div>';
+
+            let ruleList = keys.map(pkg => {
+                let rows = dict[pkg];
+                let category = identifyRuleCategory(pkg, rows);
+                return { pkg: pkg, rows: rows, type: identifyRuleType(rows), category: category };
+            });
+
+            if (currentRuleFilter === 'uninstalled') {
+                ruleList = ruleList.filter(r => !allApps.some(a => a.pkg === r.pkg));
+            } else if (currentRuleFilter === 'sys') {
+                ruleList = ruleList.filter(r => r.category === 'sys');
+            } else if (currentRuleFilter !== 'all') {
+                ruleList = ruleList.filter(r => r.type === currentRuleFilter);
+            }
+
+            if (searchRuleQuery) { ruleList = ruleList.filter(r => r.pkg.toLowerCase().includes(searchRuleQuery)); }
+
+            if (ruleList.length === 0) return container.innerHTML = '<div class="empty"><div class="empty-ic">&#128269;</div><p>没有匹配的规则</p></div>';
+
+            let autoExp = ruleList.length <= 5;
+
+            let html = ruleList.map(item => {
+                let pkg = item.pkg;
+                let rows = item.rows;
+                let appObj = allApps.find(a => a.pkg === pkg);
+                let safeId = pkg.replace(/\./g, "_");
+                let name = appObj ? appObj.name : pkg.split(".").pop();
+                let isSel = selectedPkgs.has(pkg);
+
+                let bdHtml = rows.map(r => {
+                    let m = r.match(/=([^{=]+)$/);
+                    let core = m ? m[1] : "";
+                    return `<div class="rline"><span class="rltxt">${escapeHtml(r)}</span>${core ? `<span class="rcore">${core}</span>` : ""}</div>`;
+                }).join("");
+
+                let iconHtml = generateIcon(appObj ? appObj.icon : null, name, pkg, '38px');
+                let typeLabel = item.type === 'game' ? '<span class="tag t-game">游戏</span>' : '<span class="tag t-app">普通 APP</span>';
+                if (item.category === 'sys') typeLabel = '<span class="tag t-sys">系统APP</span>';
+                if (!appObj) typeLabel += ' <span class="tag" style="background:#ef4444;color:#fff;">未安装</span>';
+
+                return `
+        <div class="rcard ${autoExp ? 'open' : ''} ${isSel ? 'sel' : ''}" id="rc-${safeId}" data-pkg="${pkg}">
+            <div class="rcard-hd" onclick="toggleSelectRule('${pkg}', event)">
+                <div class="achk"><span class="achkm">&#10003;</span></div>
+                ${iconHtml}
+                <div style="flex:1; margin-left: 8px;" onclick="toggleCard('${safeId}', event); event.stopPropagation();">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span class="rpname">${escapeHtml(name)}</span> ${typeLabel}
+                    </div>
+                    <div style="font-size:11px;color:var(--dim);margin-top:4px;">${escapeHtml(pkg)}</div>
+                </div>
+                <span class="rbdg" onclick="toggleCard('${safeId}', event); event.stopPropagation();">${rows.length} 条</span>
+            </div>
+            <div class="rcard-bd">
+                ${bdHtml}
+                <div style="display:flex; gap:8px; margin-top:12px;">
+                    <button class="btn bs bxs" onclick="openSingleModal('${pkg}', event)">编辑</button>
+                    <button class="btn berr bxs" onclick="confirmDelete('${pkg}')">删除</button>
+                </div>
+            </div>
+        </div>`;
+            }).join("");
+
+            container.innerHTML = html;
+        }
+
+        function setRuleFilter(type, el) {
+            currentRuleFilter = type;
+            document.querySelectorAll("#page-rules .filter-rule .chip").forEach(n => n.classList.remove("active"));
+            el.classList.add("active");
+            renderRules();
+        }
+
+        function filterRules() {
+            searchRuleQuery = document.getElementById("ruleSearch").value.toLowerCase();
+            toggleClearBtn("ruleSearch", "ruleSearchClear");
+            renderRules();
+        }
+
+        function toggleSelectRule(pkg, event) {
+            if (event && event.target.closest(".btn")) return;
+            if (selectedPkgs.has(pkg)) selectedPkgs.delete(pkg); else selectedPkgs.add(pkg);
+            updateSelectionBar();
+            let node = document.querySelector(`.rcard[data-pkg="${pkg}"]`);
+            if (node) node.classList.toggle("sel", selectedPkgs.has(pkg));
+        }
+
+        function selectAllRules() {
+            let dict = parseRulesMap();
+            let ruleList = Object.keys(dict).map(pkg => { return { pkg: pkg, type: identifyRuleType(dict[pkg]), category: identifyRuleCategory(pkg, dict[pkg]) }; });
+
+            if (currentRuleFilter === 'uninstalled') {
+                ruleList = ruleList.filter(r => !allApps.some(a => a.pkg === r.pkg));
+            } else if (currentRuleFilter === 'sys') {
+                ruleList = ruleList.filter(r => r.category === 'sys');
+            } else if (currentRuleFilter !== 'all') {
+                ruleList = ruleList.filter(r => r.type === currentRuleFilter);
+            }
+
+            if (searchRuleQuery) ruleList = ruleList.filter(r => r.pkg.toLowerCase().includes(searchRuleQuery));
+            ruleList.forEach(r => selectedPkgs.add(r.pkg));
+            updateSelectionBar();
+            renderRules();
+        }
+
+        function selectNoneRules() { selectedPkgs.clear(); updateSelectionBar(); renderRules(); }
+
+        function toggleCard(id, event) { if (event) event.stopPropagation(); let el = document.getElementById("rc-" + id); if (el) el.classList.toggle("open"); }
+        function expandAllRules() { document.querySelectorAll(".rcard").forEach(e => e.classList.add("open")); }
+        function collapseAllRules() { document.querySelectorAll(".rcard").forEach(e => e.classList.remove("open")); }
+
+        function confirmDelete(pkg) {
+            showCustomDialog({
+                title: "删除规则",
+                msg: `确定要删除 ${pkg} 的所有规则吗？`,
+                danger: true,
+                onConfirm: async () => {
+                    logDebug("执行单项删除规则: " + pkg);
+                    let currentText = document.getElementById("confEditor").value;
+                    let lines = currentText.split('\n');
+                    let newLines = [];
+                    for (let i = 0; i < lines.length; i++) {
+                        let t = lines[i].trim();
+                        let match = t.match(/^([a-zA-Z0-9._]+)[{=:]/);
+                        if (match && match[1] === pkg && !t.startsWith("USER_")) { continue; }
+                        newLines.push(lines[i]);
+                    }
+                    document.getElementById("confEditor").value = newLines.join('\n');
+                    await saveConf();
+                    showToast("已删除规则", "ok");
+                }
+            });
+        }
+
+        async function batchDeleteRules() {
+            if (selectedPkgs.size === 0) return;
+            showCustomDialog({
+                title: "批量删除",
+                msg: `确定要删除选中的 ${selectedPkgs.size} 个应用的规则吗？`,
+                danger: true,
+                onConfirm: async () => {
+                    showToast("正在删除...", "tip");
+                    logDebug("执行批量删除规则...");
+                    let currentText = document.getElementById("confEditor").value;
+                    let lines = currentText.split('\n');
+                    let newLines = [];
+                    let matchSet = new Set(Array.from(selectedPkgs));
+
+                    for (let i = 0; i < lines.length; i++) {
+                        let t = lines[i].trim();
+                        let match = t.match(/^([a-zA-Z0-9._]+)[{=:]/);
+                        if (match && matchSet.has(match[1]) && !t.startsWith("USER_")) { continue; }
+                        newLines.push(lines[i]);
+                    }
+
+                    document.getElementById("confEditor").value = newLines.join('\n');
+                    await backupConf();
+                    await saveConf();
+
+                    selectedPkgs.clear();
+                    updateSelectionBar();
+                    showToast("已删除选中规则", "ok");
+                }
+            });
+        }
+
+        function confirmClearAll() {
+            showCustomDialog({
+                title: "清空全部规则",
+                msg: "确定要清空全部规则吗？\n(将自动备份，且完美保留顶部模板与全局配置)",
+                danger: true,
+                onConfirm: async () => {
+                    showToast("正在清空...", "tip");
+                    logDebug("执行清空所有规则...");
+                    let currentText = document.getElementById("confEditor").value;
+                    let lines = currentText.split('\n');
+                    let newLines = [];
+
+                    let templateEndMark = "# ==============================================\n# 【模板配置区结束】以下为原有生效规则，请勿将生效规则写在模板配置区内\n# ==============================================";
+                    let templateEndFound = false;
+                    for (let i = 0; i < lines.length; i++) {
+                        let line = lines[i];
+                        let t = line.trim();
+                        if (!templateEndFound) {
+                            newLines.push(line);
+                            if (t.includes("【模板配置区结束】")) templateEndFound = true;
+                            continue;
+                        }
+                        let isRule = t.match(/^[a-zA-Z0-9._]+[{=:]/) && !t.startsWith("USER_");
+                        if (isRule) continue;
+                        newLines.push(line);
+                    }
+
+                    document.getElementById("confEditor").value = newLines.join('\n');
+                    await backupConf();
+                    await saveConf();
+                    showToast("已清空全部规则（已保留模板）", "ok");
+                }
+            });
+        }
+
+        const builtinTemplates = {
+            app: [
+                { id: "app-default", name: "默认 (均衡)", type: "app", builtIn: true, values: { "app-main": "3-5", "app-io": "0-2", "app-def": "0-2" } },
+                { id: "app-powersave", name: "省电 (严格)", type: "app", builtIn: true, values: { "app-main": "0-2", "app-io": "0-2", "app-def": "0-2" } }
+            ],
+            game: [
+                { id: "gu-default", name: "默认 (有UnityMain)", type: "game", mode: "unity", builtIn: true, values: { "g-main": "6-7", "g-mid": "6-7", "g-native": "3-5", "g-work": "3-5", "g-low": "0-5", "g-def": "0-5" } },
+                { id: "gnu-default", name: "默认 (无UnityMain)", type: "game", mode: "nounity", builtIn: true, values: { "nu-main": "6-7", "nu-render": "6-7", "nu-mid": "3-5", "nu-low": "0-5", "nu-def": "0-5" } }
+            ]
+        };
+
+        let cachedTemplates = { app: null, game: null };
+
+        function getCachedTemplates(type) {
+            if (!cachedTemplates[type]) {
+                cachedTemplates[type] = getAllTemplates(type);
+            }
+            return cachedTemplates[type];
+        }
+
+        function clearTemplateCache() {
+            cachedTemplates = { app: null, game: null };
+        }
+
+        function getLocalTemplates(type) { try { let r = localStorage.getItem("appopt-templates-" + type); let p = r ? JSON.parse(r) : []; return Array.isArray(p) ? p.filter(t => t.type === type) : []; } catch (e) { return []; } }
+        function setLocalTemplates(type, data) { localStorage.setItem("appopt-templates-" + type, JSON.stringify(data || [])); clearTemplateCache(); }
+        function getAllTemplates(type) { return builtinTemplates[type].concat(getLocalTemplates(type)); }
+
+        function selectCpre(el, key) {
+            document.querySelectorAll(`.cpre[data-key="${key}"]`).forEach(n => n.classList.remove("sel"));
+            el.classList.add("sel");
+            let input = document.getElementById(key + "-input");
+            if (input) input.value = el.dataset.val;
+        }
+
+        function clearCpreSelection(key) {
+            document.querySelectorAll(`.cpre[data-key="${key}"]`).forEach(n => n.classList.remove("sel"));
+        }
+
+        function clearCpreSelectionByInput(input) {
+            if (!input || !input.id || !input.id.endsWith("-input")) return;
+            let key = input.id.slice(0, -6);
+            clearCpreSelection(key);
+        }
+
+        function applyTemplateValues(template, values) {
+            let text = template;
+            Object.keys(values || {}).forEach(k => {
+                let placeholder = `{{${k}}}`;
+                text = text.split(placeholder).join(values[k]);
+            });
+            return text;
+        }
+
+        function templateHasPlaceholders(template, placeholders) {
+            if (!template) return false;
+            return placeholders.some(ph => template.includes(`{{${ph}}}`));
+        }
+
+        function openBatchModal(type) {
+            if (selectedPkgs.size === 0) return showToast("请先选择应用或规则", "fail");
+            switchType(type);
+            document.getElementById("batchModalTitle").textContent = `批量配置应用`;
+            document.getElementById("batchPreview").style.display = "none";
+            document.getElementById("batchModal").classList.add("open");
+        }
+
+        function closeBatchModal(event) { if (!event || event.target.id === "batchModal") document.getElementById("batchModal").classList.remove("open"); }
+
+        function switchType(type) {
+            batchType = type;
+            document.getElementById("cfg-app").style.display = type === "app" ? "block" : "none";
+            document.getElementById("cfg-game").style.display = type === "game" ? "block" : "none";
+            document.getElementById("ttbtn-app").classList.toggle("active", type === "app");
+            document.getElementById("ttbtn-game").classList.toggle("active", type === "game");
+            initTemplates(type);
+        }
+
+        function initTemplates(type) {
+            let tpls = getCachedTemplates(type);
+            let cso = document.getElementById(`cso-${type}`);
+            let hiddenInput = document.getElementById(`tpl-${type}-select`);
+
+            if (cso) {
+                let html = '';
+                if (type === 'game') {
+                    html += `<div class="custom-sel-opt" onclick="selectTemplateOpt('${type}', '', '请选择游戏模板', event)">请选择游戏模板</div>`;
+                }
+                html += tpls.map(t => {
+                    let labelText = `${escapeHtml(t.name)}${t.builtIn ? " (内置)" : ""}`;
+                    return `<div class="custom-sel-opt" onclick="selectTemplateOpt('${type}', '${t.id}', '${labelText}', event)">${labelText}</div>`;
+                }).join('');
+                cso.innerHTML = html;
+
+                if (type === 'game') {
+                    document.getElementById(`cst-${type}`).textContent = "请选择游戏模板";
+                    hiddenInput.value = "";
+                    document.getElementById('cfg-game-unity-fields').style.display = 'none';
+                    document.getElementById('cfg-game-nounity-fields').style.display = 'none';
+                } else {
+                    let currTpl = tpls[0];
+                    if (currTpl) {
+                        let initialLabel = `${currTpl.name}${currTpl.builtIn ? " (内置)" : ""}`;
+                        document.getElementById(`cst-${type}`).textContent = initialLabel;
+                        hiddenInput.value = currTpl.id;
+                        applyTemplate(type, currTpl.id);
+                    }
+                }
+            }
+        }
+
+        function selectTemplateOpt(type, id, label, event) {
+            if (event) event.stopPropagation();
+
+            document.getElementById(`tpl-${type}-select`).value = id;
+            document.getElementById(`cst-${type}`).textContent = label;
+            let opts = document.getElementById(`cso-${type}`);
+            opts.classList.remove('open');
+            opts.classList.remove('drop-up');
+
+            if (type === 'game') {
+                if (!id) {
+                    document.getElementById('cfg-game-unity-fields').style.display = 'none';
+                    document.getElementById('cfg-game-nounity-fields').style.display = 'none';
+                    return;
+                }
+                let t = getCachedTemplates(type).find(i => i.id === id);
+                if (t) {
+                    currentGameMode = t.mode;
+                    document.getElementById('cfg-game-unity-fields').style.display = currentGameMode === 'unity' ? 'block' : 'none';
+                    document.getElementById('cfg-game-nounity-fields').style.display = currentGameMode === 'nounity' ? 'block' : 'none';
+                }
+            } else if (type === 'app') {
+                let warnEl = document.getElementById('app-tpl-warn');
+                if (warnEl) {
+                    warnEl.style.display = id === 'app-powersave' ? 'block' : 'none';
+                }
+            }
+
+            if (id) {
+                applyTemplate(type, id);
+            }
+        }
+
+        function applyTemplate(type, id) {
+            let t = getCachedTemplates(type).find(i => i.id === id);
+            if (t) {
+                Object.keys(t.values || {}).forEach(k => {
+                    let input = document.getElementById(k + "-input");
+                    if (input) {
+                        input.value = t.values[k];
+                        let val = input.value.trim();
+                        let found = false;
+                        document.querySelectorAll(`.cpre[data-key="${k}"]`).forEach(btn => {
+                            let match = btn.dataset.val === val;
+                            btn.classList.toggle("sel", match);
+                            if (match) found = true;
+                        });
+                        if (!found) document.querySelectorAll(`.cpre[data-key="${k}"]`).forEach(b => b.classList.remove("sel"));
+                    }
+                });
+                let delBtn = document.getElementById(`tpl-${type}-del`);
+                if (delBtn) delBtn.disabled = !!t.builtIn;
+            }
+        }
+
+        function saveCurrentAsTemplate(type) {
+            if (type !== 'app') return;
+            showCustomDialog({
+                title: "保存为模板",
+                msg: "请输入新模板的名称：",
+                isPrompt: true,
+                placeholder: "例如：极限省电",
+                onConfirm: (name) => {
+                    if (name) {
+                        let vals = {};
+                        let keys = ["app-main", "app-io", "app-def"];
+                        keys.forEach(k => { let n = document.getElementById(k + "-input"); vals[k] = n ? n.value.trim() : ""; });
+                        let id = type + "_" + Date.now();
+                        let locals = getLocalTemplates(type);
+                        locals.push({ id, name: name.trim(), type, values: vals, builtIn: false });
+                        setLocalTemplates(type, locals);
+
+                        initTemplates(type);
+                        selectTemplateOpt(type, id, name.trim());
+                        showToast("模板已保存", "ok");
+                    }
+                }
+            });
+        }
+
+        function deleteTemplate(type) {
+            if (type !== 'app') return;
+            let hiddenInput = document.getElementById(`tpl-${type}-select`);
+            if (hiddenInput) {
+                let tid = hiddenInput.value;
+                let t = getAllTemplates(type).find(i => i.id === tid);
+                if (!t || t.builtIn) return showToast("内置模板无法删除", "fail");
+
+                showCustomDialog({
+                    title: "删除模板",
+                    msg: `确认删除模板：“${t.name}”?`,
+                    danger: true,
+                    onConfirm: () => {
+                        setLocalTemplates(type, getLocalTemplates(type).filter(i => i.id !== tid));
+                        initTemplates(type);
+                        showToast("模板已删除", "ok");
+                    }
+                });
+            }
+        }
+
+        function getVal(id) { return document.getElementById(id).value.trim() || "0-5"; }
+
+        function genAppRules(pkg, name) {
+            let main = getVal("app-main-input");
+            let io = getVal("app-io-input");
+            let def = getVal("app-def-input");
+
+            if (configTemplates.app && templateHasPlaceholders(configTemplates.app, ["MAIN", "IO", "DEF"])) {
+                return applyTemplateValues(configTemplates.app, { MAIN: main, IO: io, DEF: def })
+                    .replace(/{{PKG_NAME}}/g, pkg)
+                    .replace(/{{APP_NAME}}/g, name || pkg);
+            }
+
+            return `\n# ==================${name || pkg}=====================
+${pkg}{${pkg}}=${main}
+${pkg}{Thread-*}=${main}
+${pkg}{Thread*}=${main}
+${pkg}{*[!e!r]Thread}=${main}
+${pkg}{binder:*}=${io}
+${pkg}{MediaCodec_*}=${main}
+${pkg}{VDecod2-*}=${main}
+${pkg}=${def}`;
+        }
+
+        function genGameRules(pkg, name) {
+            if (currentGameMode === 'nounity') {
+                let main = getVal("nu-main-input");
+                let render = getVal("nu-render-input");
+                let mid = getVal("nu-mid-input");
+                let low = getVal("nu-low-input");
+                let def = getVal("nu-def-input");
+
+                if (configTemplates.gameNoUnity && templateHasPlaceholders(configTemplates.gameNoUnity, ["MAIN", "RENDER", "MID", "LOW", "DEF"])) {
+                    return applyTemplateValues(configTemplates.gameNoUnity, { MAIN: main, RENDER: render, MID: mid, LOW: low, DEF: def })
+                        .replace(/{{PKG_NAME}}/g, pkg)
+                        .replace(/{{APP_NAME}}/g, name || pkg);
+                }
+
+                return `\n# ==================${name || pkg}=====================
+#核心优化理论与应用原则（无UnityMain）
+${pkg}{Render Thread}=${main}
+${pkg}{RenderThread*}=${main}
+${pkg}{*GameThread}=${main}
+${pkg}{MainThread}=${main}
+${pkg}{*[!e!r]Thread}=${render}
+${pkg}{NativeThread}=${mid}
+${pkg}{Thread-*}=${low}
+${pkg}{Job.worker*}=${mid}
+${pkg}{Job.Worker*}=${mid}
+${pkg}=${def}`;
+            } else {
+                let m = getVal("g-main-input");
+                let mid = getVal("g-mid-input");
+                let native = getVal("g-native-input");
+                let w = getVal("g-work-input");
+                let low = getVal("g-low-input");
+                let def = getVal("g-def-input");
+
+                if (configTemplates.gameUnity && templateHasPlaceholders(configTemplates.gameUnity, ["MAIN", "MID", "NATIVE", "WORK", "LOW", "DEF"])) {
+                    return applyTemplateValues(configTemplates.gameUnity, { MAIN: m, MID: mid, NATIVE: native, WORK: w, LOW: low, DEF: def })
+                        .replace(/{{PKG_NAME}}/g, pkg)
+                        .replace(/{{APP_NAME}}/g, name || pkg);
+                }
+
+                return `\n# ==================${name || pkg}=====================
+#核心优化理论与应用原则（有UnityMain）
+${pkg}{UnityMain}=${m}
+${pkg}{Unity[!M]*}=${mid}
+${pkg}{RenderThread*}=${mid}
+${pkg}{NativeThread}=${native}
+${pkg}{*[!e!r]Thread}=${low}
+${pkg}{Thread-*}=${low}
+${pkg}{Job.worker*}=${w}
+${pkg}{Job.Worker*}=${w}
+${pkg}=${def}`;
+            }
+        }
+
+        function previewRule() {
+            if (batchType === 'game' && !document.getElementById('tpl-game-select').value) {
+                showToast('请先选择游戏模板', 'fail');
+                return;
+            }
+            let arr = Array.from(selectedPkgs);
+            if (arr.length > 0) {
+                let pkg = arr[0];
+                let appObj = allApps.find(a => a.pkg === pkg);
+                let text = batchType === "app" ? genAppRules(pkg, appObj ? appObj.name : pkg) : genGameRules(pkg, appObj ? appObj.name : pkg);
+                document.getElementById("previewText").textContent = text;
+                document.getElementById("batchPreview").style.display = "block";
+            }
+        }
+
+        async function applyBatch() {
+            if (batchType === 'game' && !document.getElementById('tpl-game-select').value) {
+                showToast('请先选择游戏模板', 'fail');
+                return;
+            }
+
+            let arr = Array.from(selectedPkgs);
+            if (!arr.length) return;
+
+            closeBatchModal();
+            showToast(`正在写入 ${arr.length} 个应用的规则...`, "tip");
+            logDebug(`开始批量写入规则，共 ${arr.length} 个应用`);
+
+            let currentText = document.getElementById("confEditor").value;
+            let lines = currentText.split('\n');
+            let newLines = [];
+            let matchSet = new Set(arr);
+
+            for (let i = 0; i < lines.length; i++) {
+                let t = lines[i].trim();
+                let match = t.match(/^([a-zA-Z0-9._]+)[{=:]/);
+                if (match && matchSet.has(match[1]) && !t.startsWith("USER_")) { continue; }
+                newLines.push(lines[i]);
+            }
+
+            let parts = [`\n# ===== 批量配置 ${getBJTime().replace('_', ' ')} =====`];
+            arr.forEach(pkg => {
+                let appObj = allApps.find(a => a.pkg === pkg);
+                parts.push(batchType === "app" ? genAppRules(pkg, appObj ? appObj.name : pkg) : genGameRules(pkg, appObj ? appObj.name : pkg));
+            });
+
+            document.getElementById("confEditor").value = newLines.join('\n').trim() + "\n" + parts.join("\n") + "\n";
+
+            await backupConf();
+            await saveConf();
+            switchTab("rules");
+            showToast(`成功写入 ${arr.length} 个应用的规则`, "ok");
+        }
+
+        function switchTab(tabId) {
+            selectedPkgs.clear();
+            activeTab = tabId;
+
+            document.querySelectorAll(".tab").forEach(e => e.classList.remove("active"));
+            document.querySelectorAll(".page").forEach(e => e.classList.remove("active"));
+            document.getElementById("tab-" + tabId).classList.add("active");
+            document.getElementById("page-" + tabId).classList.add("active");
+
+            if (tabId === "apps") renderApps();
+            if (tabId === "rules") renderRules();
+            if (tabId === "editor") loadConf(false);
+            if (tabId === "info") checkStatus();
+
+            updateSelectionBar();
+        }
+
+        function refreshAll() { loadConf(false).then(() => { fetchApps(); renderRules(); }); showToast("已刷新", "ok"); }
+
+        function updateSelectionBar() {
+            let size = selectedPkgs.size;
+            let bbarApps = document.getElementById("bbar-apps");
+            let bbarRules = document.getElementById("bbar-rules");
+            bbarApps.classList.remove("show"); bbarRules.classList.remove("show");
+
+            if (activeTab === "apps" && size > 0) {
+                document.getElementById("binfo-apps").textContent = "已选 " + size;
+                bbarApps.classList.add("show");
+            } else if (activeTab === "rules" && size > 0) {
+                document.getElementById("binfo-rules").textContent = "已选 " + size;
+                bbarRules.classList.add("show");
+            }
+        }
+
+        function openSingleModal(pkg, event) {
+            if (event) event.stopPropagation();
+            singleTargetPkg = pkg;
+            document.getElementById("singlePkg").value = pkg;
+            document.getElementById("singleModal").classList.add("open");
+        }
+        function closeSingleModal() { document.getElementById("singleModal").classList.remove("open"); }
+
+        function editAsApp() { closeSingleModal(); selectedPkgs.clear(); selectedPkgs.add(singleTargetPkg); openBatchModal("app"); }
+        function editAsGame() { closeSingleModal(); selectedPkgs.clear(); selectedPkgs.add(singleTargetPkg); openBatchModal("game"); }
+
+        function deleteAppRules() {
+            closeSingleModal();
+            confirmDelete(singleTargetPkg);
+        }
+
+        function toggleAppDetails(pkg) {
+            let safeId = pkg.replace(/\./g, "_");
+            let container = document.getElementById("adetail-" + safeId);
+            let item = document.querySelector(`.aitem[data-pkg="${pkg}"]`);
+            if (container && item && item.classList.toggle("dopen")) {
+                let rows = parseRulesMap()[pkg] || [];
+                if (rows.length > 0) {
+                    container.innerHTML = rows.map(r => {
+                        let m = r.match(/=([^{=]+)$/);
+                        let core = m ? m[1] : "";
+                        return `<div class="adetail-line"><span class="adetail-txt">${escapeHtml(r)}</span>${core ? `<span class="adetail-core">${escapeHtml(core)}</span>` : ""}</div>`;
+                    }).join("");
+                } else { container.innerHTML = '<div class="adetail-empty">无规则行</div>'; }
+            }
+        }
+
+        function toggleCS(id, event) {
+            if (event) event.stopPropagation();
+            let opts = document.getElementById(`cso-${id}`);
+            let trigger = event.currentTarget;
+            let isOpen = opts.classList.contains('open');
+
+            document.querySelectorAll('.custom-sel-options').forEach(el => {
+                el.classList.remove('open');
+                el.classList.remove('drop-up');
+            });
+
+            if (!isOpen) {
+                let rect = trigger.getBoundingClientRect();
+                let spaceBelow = window.innerHeight - rect.bottom;
+                if (spaceBelow < 250) {
+                    opts.classList.add('drop-up');
+                }
+                opts.classList.add('open');
+            }
+        }
+
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.custom-sel-options').forEach(el => {
+                el.classList.remove('open');
+                el.classList.remove('drop-up');
+            });
+        });
+
+        let edMatches = [], edIdx = -1, edKw = "";
+        function searchInEditor(dir) {
+            let input = document.getElementById("editorSearch"), info = document.getElementById("editorSearchInfo"), editor = document.getElementById("confEditor");
+            let query = input.value;
+            if (!query) { edMatches = []; edIdx = -1; edKw = ""; info.textContent = ""; return; }
+            if (query !== edKw) {
+                edKw = query; edMatches = []; edIdx = -1;
+                let text = editor.value.toLowerCase(), qLower = query.toLowerCase(), idx = 0;
+                while ((idx = text.indexOf(qLower, idx)) !== -1) { edMatches.push(idx); idx += qLower.length; }
+            }
+            if (edMatches.length === 0) { info.textContent = "0/0"; return; }
+
+            if (dir === 0) { edIdx = 0; } else { edIdx = (edIdx + dir + edMatches.length) % edMatches.length; }
+
+            let target = edMatches[edIdx];
+            if (dir !== 0) { editor.focus(); }
+            editor.setSelectionRange(target, target + query.length);
+
+            let lines = editor.value.substring(0, target).split("\n").length - 1;
+            let lh = parseInt(getComputedStyle(editor).lineHeight) || 20;
+            editor.scrollTop = Math.max(0, lines * lh - editor.clientHeight / 2);
+            info.textContent = `${edIdx + 1}/${edMatches.length}`;
+            if (dir === 0) { input.focus(); }
+        }
+
+        Object.assign(window, {
+            switchTab, refreshAll, setFilterConf, setFilterSys, setRuleFilter, selectAllApps, selectNoneApps,
+            selectAllRules, selectNoneRules, selectUnconfigured, expandAllRules, collapseAllRules,
+            confirmClearAll, saveConf, backupConf, checkStatus, openBatchModal, closeBatchModal,
+            switchType, selectCpre, previewRule, applyBatch, initTemplates, applyTemplate, selectTemplateOpt,
+            saveCurrentAsTemplate, deleteTemplate, openSingleModal, closeSingleModal,
+            editAsApp, editAsGame, deleteAppRules, toggleSelectApp, toggleSelectRule,
+            filterApps, filterRules, toggleAppDetails, searchInEditor, toggleDebug, loadConf,
+            toggleCS, toggleCard, confirmDelete, batchDeleteRules, closeCustomDialog,
+            openRestoreModal, closeBackupModal, loadBackupFile, cleanInvalidComments,
+            clearSearch, toggleClearBtn
+        });
+
+        document.addEventListener("DOMContentLoaded", async function () {
+            document.querySelectorAll('input[id$="-input"]').forEach(inp => {
+                inp.addEventListener('input', () => clearCpreSelectionByInput(inp));
+            });
+            // 预先缓存模板数据，避免首次打开模态框时的卡顿
+            getCachedTemplates('app');
+            getCachedTemplates('game');
+            try {
+                await loadConf(false);
+                fetchApps();
+                checkStatus();
+            } catch (err) {
+                logDebug("Init Error: " + err.message);
+            }
+        });
+    </script>
+</body>
+
+</html>
