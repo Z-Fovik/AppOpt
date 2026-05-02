@@ -2439,10 +2439,10 @@
     <div class="page" id="page-info">
         <div class="info-hero">
             <div class="info-hero-title">AppOpt</div>
-            <div class="info-hero-sub">自动线程优化 · 小米17pm专版</div>
+            <div class="info-hero-sub">自动线程优化 · 小米17ProMax专版</div>
             <div class="info-hero-chips">
                 <span class="info-chip">v8</span>
-                <span class="info-chip">SM8750 2+6</span>
+                <span class="info-chip">SM8850 6+2</span>
                 <span class="info-chip" id="info-hero-rules">- 规则</span>
             </div>
         </div>
@@ -2472,7 +2472,7 @@
 
         <div class="card">
             <div class="card-title">模块基础信息</div>
-            <div class="irow"><span class="ilabel">模块名称</span><span class="ival">小米17pm自动线程</span></div>
+            <div class="irow"><span class="ilabel">模块名称</span><span class="ival">小米17ProMax自动线程</span></div>
             <div class="irow"><span class="ilabel">模块版本</span><span class="ival">v8</span></div>
             <div class="irow"><span class="ilabel">模块作者</span><span class="ival">Z-Fovik-RT</span></div>
             <div class="irow"><span class="ilabel">模块目录</span><span class="ival">/data/adb/modules/AppOpt/</span></div>
@@ -2526,7 +2526,7 @@
                 <div class="help-block-title">🎯 游戏规则 - 无UnityMain</div>
                 <div class="help-kv"><span>Main/GameThread</span><span class="core-tag core-high">6-7</span></div>
                 <div class="help-kv"><span>RenderThread渲染线程</span><span class="core-tag core-high">6-7</span></div>
-                <div class="help-kv"><span>*[!e!r]Thread通用线程</span><span class="core-tag core-high">6-7</span></div>
+                <div class="help-kv"><span>*[!er]Thread通用线程</span><span class="core-tag core-high">6-7</span></div>
                 <div class="help-kv"><span>NativeThread本地线程</span><span class="core-tag core-mid">3-5</span></div>
                 <div class="help-kv"><span>通用/默认兜底线程</span><span class="core-tag core-low">0-5</span></div>
             </div>
@@ -2681,7 +2681,7 @@
                         <input id="g-work-input" value="3-5">
                     </div>
                     <div class="fld">
-                        <label>Thread-* / *[!e!r]Thread 通用线程</label>
+                        <label>Thread-* / *[!er]Thread 通用线程</label>
                         <div class="cpres">
                             <span class="cpre sel" data-key="g-low" data-val="0-5" onclick="selectCpre(this,'g-low')">中核
                                 0-5</span>
@@ -2712,7 +2712,7 @@
                         <input id="nu-main-input" value="6-7">
                     </div>
                     <div class="fld">
-                        <label>*[!e!r]Thread / Render Thread*</label>
+                        <label>*[!er]Thread / Render Thread*</label>
                         <div class="cpres">
                             <span class="cpre sel" data-key="nu-render" data-val="6-7"
                                 onclick="selectCpre(this,'nu-render')">大核 6-7</span>
@@ -3482,6 +3482,7 @@
             renderRules();
         }
 
+
         function selectNoneRules() { selectedPkgs.clear(); updateSelectionBar(); renderRules(); }
 
         function toggleCard(id, event) { if (event) event.stopPropagation(); let el = document.getElementById("rc-" + id); if (el) el.classList.toggle("open"); }
@@ -3807,7 +3808,7 @@
 ${pkg}{${pkg}}=${main}
 ${pkg}{Thread-*}=${main}
 ${pkg}{Thread*}=${main}
-${pkg}{*[!e!r]Thread}=${main}
+${pkg}{*[!er]Thread}=${main}
 ${pkg}{binder:*}=${io}
 ${pkg}{MediaCodec_*}=${main}
 ${pkg}{VDecod2-*}=${main}
@@ -3834,7 +3835,7 @@ ${pkg}{Render Thread}=${main}
 ${pkg}{RenderThread*}=${main}
 ${pkg}{*GameThread}=${main}
 ${pkg}{MainThread}=${main}
-${pkg}{*[!e!r]Thread}=${render}
+${pkg}{*[!er]Thread}=${render}
 ${pkg}{NativeThread}=${mid}
 ${pkg}{Thread-*}=${low}
 ${pkg}{Job.worker*}=${mid}
@@ -3860,7 +3861,7 @@ ${pkg}{UnityMain}=${m}
 ${pkg}{Unity[!M]*}=${mid}
 ${pkg}{RenderThread*}=${mid}
 ${pkg}{NativeThread}=${native}
-${pkg}{*[!e!r]Thread}=${low}
+${pkg}{*[!er]Thread}=${low}
 ${pkg}{Thread-*}=${low}
 ${pkg}{Job.worker*}=${w}
 ${pkg}{Job.Worker*}=${w}
